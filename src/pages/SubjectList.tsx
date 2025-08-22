@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { SubjectCard } from "@/components/subject-card";
 import { subjects } from "@/data/questions";
-import { GraduationCap, BarChart3 } from "lucide-react";
+import { GraduationCap, BarChart3, RefreshCw, BookOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export default function SubjectList() {
   const navigate = useNavigate();
@@ -11,9 +14,21 @@ export default function SubjectList() {
     navigate(`/subjects/${subjectId}`);
   };
 
+  const handleStartReview = () => {
+    navigate('/quiz/review-all');
+  };
+
   const totalQuestions = subjects.reduce((sum, subject) => sum + subject.totalQuestions, 0);
   const completedQuestions = subjects.reduce((sum, subject) => sum + subject.completedQuestions, 0);
   const overallProgress = Math.round((completedQuestions / totalQuestions) * 100);
+  
+  // 全単元の復習対象カードを集計
+  const totalDueCards = subjects.reduce((sum, subject) => 
+    sum + subject.units.reduce((unitSum, unit) => unitSum + unit.dueCards, 0), 0
+  );
+  const totalNewCards = subjects.reduce((sum, subject) => 
+    sum + subject.units.reduce((unitSum, unit) => unitSum + unit.newCards, 0), 0
+  );
 
   return (
     <div className="min-h-screen gradient-learning">
@@ -44,6 +59,51 @@ export default function SubjectList() {
             間隔反復学習で効率的に知識を定着させましょう
           </p>
         </div>
+
+        {/* 一括復習カード */}
+        {(totalDueCards > 0 || totalNewCards > 0) && (
+          <Card className="mb-8 card-elevated border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <RefreshCw className="h-5 w-5 text-primary" />
+                一括復習
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                すべての単元の復習対象問題をまとめて学習
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
+                    {totalDueCards + totalNewCards} 問題
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {totalDueCards > 0 && (
+                    <Badge variant="destructive" className="text-xs">
+                      復習 {totalDueCards}
+                    </Badge>
+                  )}
+                  {totalNewCards > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      新規 {totalNewCards}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <Button 
+                onClick={handleStartReview}
+                className="w-full"
+                size="sm"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                一括復習を開始
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {subjects.map((subject) => (

@@ -17,12 +17,40 @@ export default function Quiz() {
   const [cards, setCards] = useState<Card[]>([]);
   const [isComplete, setIsComplete] = useState(false);
 
-  // Find unit and questions
-  const unit = subjects
-    .flatMap(s => s.units)
-    .find(u => u.id === unitId);
+  // Find unit and questions or handle review-all case
+  let unit, questions;
   
-  const questions = unit?.questions || [];
+  if (unitId === 'review-all') {
+    // 一括復習の場合：全単元から復習対象の問題を収集
+    const allUnits = subjects.flatMap(s => s.units);
+    const reviewQuestions: any[] = [];
+    
+    allUnits.forEach(u => {
+      // 復習対象カードがある問題を追加
+      if (u.dueCards > 0) {
+        reviewQuestions.push(...u.questions.slice(0, u.dueCards));
+      }
+      // 新規カードがある問題を追加
+      if (u.newCards > 0) {
+        const startIndex = Math.max(0, u.questions.length - u.newCards);
+        reviewQuestions.push(...u.questions.slice(startIndex));
+      }
+    });
+    
+    unit = {
+      id: 'review-all',
+      name: '一括復習',
+      description: 'すべての単元の復習対象問題',
+      subjectId: 'all'
+    };
+    questions = reviewQuestions;
+  } else {
+    // 通常の単元別クイズ
+    unit = subjects
+      .flatMap(s => s.units)
+      .find(u => u.id === unitId);
+    questions = unit?.questions || [];
+  }
   
   useEffect(() => {
     if (questions.length > 0) {
