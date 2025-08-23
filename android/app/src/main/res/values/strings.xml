@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">swift-revise</string>
+    <string name="title_activity_main">swift-revise</string>
+    <string name="package_name">app.lovable.ec172ed8f06f41d0af01e6490bb69931</string>
+    <string name="custom_url_scheme">app.lovable.ec172ed8f06f41d0af01e6490bb69931</string>
+</resources>
