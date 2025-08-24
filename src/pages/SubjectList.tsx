@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { SubjectCard } from "@/components/subject-card";
 import { subjects } from "@/data/questions";
 import { GraduationCap, BarChart3, RefreshCw, BookOpen } from "lucide-react";
@@ -6,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { getAllQuestionStats, getLowAccuracyQuestionIds } from "@/lib/answer-stats";
 
 export default function SubjectList() {
   const navigate = useNavigate();
@@ -18,15 +18,29 @@ export default function SubjectList() {
     navigate('/quiz/review-all');
   };
 
-  const totalQuestions = subjects.reduce((sum, subject) => sum + subject.totalQuestions, 0);
-  const completedQuestions = subjects.reduce((sum, subject) => sum + subject.completedQuestions, 0);
+  const stats = getAllQuestionStats();
+  const lowIds = new Set(getLowAccuracyQuestionIds());
+
+  const updatedSubjects = subjects.map(subject => {
+    const updatedUnits = subject.units.map(unit => {
+      const dueCards = unit.questions.filter(q => lowIds.has(q.id)).length;
+      const newCards = unit.questions.filter(q => !stats[q.id]).length;
+      return { ...unit, dueCards, newCards };
+    });
+    const questionIds = new Set(subject.units.flatMap(u => u.questions.map(q => q.id)));
+    const completedQuestions = Object.keys(stats).filter(id => questionIds.has(id)).length;
+    return { ...subject, units: updatedUnits, completedQuestions };
+  });
+
+  const totalQuestions = updatedSubjects.reduce((sum, subject) => sum + subject.totalQuestions, 0);
+  const completedQuestions = updatedSubjects.reduce((sum, subject) => sum + subject.completedQuestions, 0);
   const overallProgress = Math.round((completedQuestions / totalQuestions) * 100);
-  
+
   // 全単元の復習対象カードを集計
-  const totalDueCards = subjects.reduce((sum, subject) => 
+  const totalDueCards = updatedSubjects.reduce((sum, subject) =>
     sum + subject.units.reduce((unitSum, unit) => unitSum + unit.dueCards, 0), 0
   );
-  const totalNewCards = subjects.reduce((sum, subject) => 
+  const totalNewCards = updatedSubjects.reduce((sum, subject) =>
     sum + subject.units.reduce((unitSum, unit) => unitSum + unit.newCards, 0), 0
   );
 
@@ -106,7 +120,7 @@ export default function SubjectList() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {subjects.map((subject) => (
+          {updatedSubjects.map((subject) => (
             <SubjectCard
               key={subject.id}
               subject={subject}

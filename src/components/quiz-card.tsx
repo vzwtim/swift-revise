@@ -12,15 +12,17 @@ interface QuizCardProps {
   onAnswer: (answer: number, timeSpent: number) => void;
   showResult?: boolean;
   selectedAnswer?: number;
+  lastResult?: boolean;
 }
 
-export function QuizCard({ 
-  question, 
-  questionNumber, 
-  totalQuestions, 
+export function QuizCard({
+  question,
+  questionNumber,
+  totalQuestions,
   onAnswer,
   showResult = false,
-  selectedAnswer 
+  selectedAnswer,
+  lastResult
 }: QuizCardProps) {
   const [startTime] = useState(Date.now());
   const [timeSpent, setTimeSpent] = useState(0);
@@ -108,6 +110,11 @@ export function QuizCard({
           <CardTitle className="text-lg leading-relaxed mt-4">
             {question.question}
           </CardTitle>
+          {lastResult !== undefined && (
+            <p className="text-sm text-muted-foreground mt-2">
+              前回の結果: {lastResult ? "正解" : "不正解"}
+            </p>
+          )}
         </CardHeader>
 
         <CardContent className="pb-32 md:pb-6">
