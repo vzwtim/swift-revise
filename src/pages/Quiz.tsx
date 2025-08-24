@@ -28,14 +28,9 @@ export default function Quiz() {
     const reviewQuestions: Question[] = [];
     
     allUnits.forEach(u => {
-      // 復習対象カードがある問題を追加
+      // 復習対象カードのみを追加
       if (u.dueCards > 0) {
         reviewQuestions.push(...u.questions.slice(0, u.dueCards));
-      }
-      // 新規カードがある問題を追加
-      if (u.newCards > 0) {
-        const startIndex = Math.max(0, u.questions.length - u.newCards);
-        reviewQuestions.push(...u.questions.slice(startIndex));
       }
     });
     
