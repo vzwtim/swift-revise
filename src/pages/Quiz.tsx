@@ -6,6 +6,7 @@ import { subjects } from "@/data/questions";
 import { SpacedRepetitionScheduler } from "@/lib/scheduler";
 import { UserAnswer, Card, Question } from "@/lib/types";
 import { ArrowLeft, RotateCcw } from "lucide-react";
+import { saveAnswerHistory } from "@/lib/answer-history";
 
 export default function Quiz() {
   const { unitId } = useParams<{ unitId: string }>();
@@ -16,6 +17,7 @@ export default function Quiz() {
   const [showResult, setShowResult] = useState(false);
   const [cards, setCards] = useState<Card[]>([]);
   const [isComplete, setIsComplete] = useState(false);
+  const [sessionId] = useState(() => crypto.randomUUID());
 
   // Find unit and questions or handle review-all case
   let unit, questions;
@@ -93,6 +95,7 @@ export default function Quiz() {
 
     setAnswers(prev => [...prev, userAnswer]);
     setShowResult(true);
+    void saveAnswerHistory(sessionId, userAnswer);
 
     // Update card with spaced repetition
     const cardIndex = cards.findIndex(c => c.questionId === currentQuestion.id);
