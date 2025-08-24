@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { QuizCard } from "@/components/quiz-card";
 import { Button } from "@/components/ui/button";
-import { subjects, dummyQuestions } from "@/data/questions";
+import { subjects } from "@/data/questions";
 import { SpacedRepetitionScheduler } from "@/lib/scheduler";
-import { UserAnswer, Card } from "@/lib/types";
+import { UserAnswer, Card, Question } from "@/lib/types";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 
 export default function Quiz() {
@@ -23,7 +23,7 @@ export default function Quiz() {
   if (unitId === 'review-all') {
     // 一括復習の場合：全単元から復習対象の問題を収集
     const allUnits = subjects.flatMap(s => s.units);
-    const reviewQuestions: any[] = [];
+    const reviewQuestions: Question[] = [];
     
     allUnits.forEach(u => {
       // 復習対象カードがある問題を追加
