@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Question } from "@/lib/types";
@@ -23,7 +22,6 @@ export function QuizCard({
   showResult = false,
   selectedAnswer 
 }: QuizCardProps) {
-  const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
   const [startTime] = useState(Date.now());
   const [timeSpent, setTimeSpent] = useState(0);
 
@@ -38,13 +36,8 @@ export function QuizCard({
 
   const handleChoiceSelect = (choiceIndex: number) => {
     if (showResult) return;
-    setSelectedChoice(choiceIndex);
-  };
-
-  const handleSubmit = () => {
-    if (selectedChoice === null) return;
     const timeSpent = Date.now() - startTime;
-    onAnswer(selectedChoice, timeSpent);
+    onAnswer(choiceIndex, timeSpent);
   };
 
   const getDifficultyColor = (difficulty?: string) => {
@@ -58,9 +51,7 @@ export function QuizCard({
 
   const getChoiceStyle = (index: number) => {
     if (!showResult) {
-      return selectedChoice === index 
-        ? "quiz-answer-card border-primary bg-primary/5" 
-        : "quiz-answer-card border-border hover:border-muted-foreground";
+      return "quiz-answer-card border-border hover:border-muted-foreground";
     }
 
     if (index === question.answer) {
@@ -121,22 +112,13 @@ export function QuizCard({
           ))}
         </div>
 
-        {showResult ? (
+        {showResult && (
           <div className="space-y-4">
             <div className="p-4 bg-muted/50 rounded-lg">
               <h4 className="font-medium mb-2">解説</h4>
               <p className="text-sm text-muted-foreground">{question.explanation}</p>
             </div>
           </div>
-        ) : (
-          <Button 
-            onClick={handleSubmit}
-            disabled={selectedChoice === null}
-            className="w-full gradient-primary"
-            size="lg"
-          >
-            回答する
-          </Button>
         )}
       </CardContent>
     </Card>
