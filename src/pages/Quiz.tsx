@@ -225,15 +225,26 @@ export default function Quiz() {
         />
         
         {showResult && (
-          <div className="text-center mt-8">
-            <Button 
-              onClick={handleNext}
-              size="lg"
-              className="gradient-primary"
-            >
-              {currentQuestionIndex + 1 >= questions.length ? "完了" : "次の問題"}
-            </Button>
-          </div>
+          <>
+            <div className="text-center mt-8 hidden sm:block">
+              <Button
+                onClick={handleNext}
+                size="lg"
+                className="gradient-primary"
+              >
+                {currentQuestionIndex + 1 >= questions.length ? "完了" : "次の問題"}
+              </Button>
+            </div>
+            <div className="sm:hidden fixed bottom-4 left-0 right-0 px-4">
+              <Button
+                onClick={handleNext}
+                size="lg"
+                className="w-full gradient-primary"
+              >
+                {currentQuestionIndex + 1 >= questions.length ? "完了" : "次の問題"}
+              </Button>
+            </div>
+          </>
         )}
       </main>
     </div>
