@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ProgressRing } from "@/components/ui/progress-ring";
 import { subjects } from "@/data/questions";
 import { ArrowLeft, BookOpen, Clock, CheckCircle2 } from "lucide-react";
+import { getAllQuestionStats, getLowAccuracyQuestionIds } from "@/lib/answer-stats";
 
 export default function Subject() {
   const { id } = useParams<{ id: string }>();
@@ -22,9 +23,21 @@ export default function Subject() {
     );
   }
 
-  const completionRate = Math.round((subject.completedQuestions / subject.totalQuestions) * 100);
-  const totalDueCards = subject.units.reduce((sum, unit) => sum + unit.dueCards, 0);
-  const totalNewCards = subject.units.reduce((sum, unit) => sum + unit.newCards, 0);
+  const stats = getAllQuestionStats();
+  const lowIds = new Set(getLowAccuracyQuestionIds());
+
+  const updatedUnits = subject.units.map(unit => {
+    const dueCards = unit.questions.filter(q => lowIds.has(q.id)).length;
+    const newCards = unit.questions.filter(q => !stats[q.id]).length;
+    return { ...unit, dueCards, newCards };
+  });
+
+  const questionIds = new Set(subject.units.flatMap(u => u.questions.map(q => q.id)));
+  const completedQuestions = Object.keys(stats).filter(id => questionIds.has(id)).length;
+
+  const completionRate = Math.round((completedQuestions / subject.totalQuestions) * 100);
+  const totalDueCards = updatedUnits.reduce((sum, unit) => sum + unit.dueCards, 0);
+  const totalNewCards = updatedUnits.reduce((sum, unit) => sum + unit.newCards, 0);
 
   const handleStartQuiz = (unitId: string) => {
     navigate(`/quiz/${unitId}`);
@@ -65,7 +78,7 @@ export default function Subject() {
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-success" />
-                  <span>{subject.completedQuestions} 完了</span>
+                  <span>{completedQuestions} 完了</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-warning" />
@@ -83,7 +96,7 @@ export default function Subject() {
         <div className="mb-8">
           <h2 className="text-2xl font-bold mb-4">学習単元</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {subject.units.map((unit) => (
+            {updatedUnits.map((unit) => (
               <UnitCard
                 key={unit.id}
                 unit={unit}

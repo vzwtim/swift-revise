@@ -7,6 +7,11 @@ import { SpacedRepetitionScheduler } from "@/lib/scheduler";
 import { UserAnswer, Card, Question } from "@/lib/types";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { saveAnswerHistory } from "@/lib/answer-history";
+import {
+  updateQuestionStats,
+  getQuestionStats,
+  getLowAccuracyQuestionIds,
+} from "@/lib/answer-stats";
 
 export default function Quiz() {
   const { unitId } = useParams<{ unitId: string }>();
@@ -23,17 +28,11 @@ export default function Quiz() {
   let unit, questions;
   
   if (unitId === 'review-all') {
-    // 一括復習の場合：全単元から復習対象の問題を収集
-    const allUnits = subjects.flatMap(s => s.units);
-    const reviewQuestions: Question[] = [];
-    
-    allUnits.forEach(u => {
-      // 復習対象カードのみを追加
-      if (u.dueCards > 0) {
-        reviewQuestions.push(...u.questions.slice(0, u.dueCards));
-      }
-    });
-    
+    // 一括復習: 正答率が低い問題のみを収集
+    const allQuestions = subjects.flatMap(s => s.units.flatMap(u => u.questions));
+    const lowIds = new Set(getLowAccuracyQuestionIds());
+    const reviewQuestions = allQuestions.filter(q => lowIds.has(q.id));
+
     unit = {
       id: 'review-all',
       name: '一括復習',
@@ -42,11 +41,16 @@ export default function Quiz() {
     };
     questions = reviewQuestions;
   } else {
-    // 通常の単元別クイズ
+    // 通常の単元別クイズ。正答率が低い問題を優先して出題
     unit = subjects
       .flatMap(s => s.units)
       .find(u => u.id === unitId);
-    questions = unit?.questions || [];
+    const lowIds = new Set(getLowAccuracyQuestionIds());
+    questions = (unit?.questions || []).slice().sort((a, b) => {
+      const aLow = lowIds.has(a.id);
+      const bLow = lowIds.has(b.id);
+      return aLow === bLow ? 0 : aLow ? -1 : 1;
+    });
   }
   
   useEffect(() => {
@@ -71,6 +75,7 @@ export default function Quiz() {
   }
 
   const currentQuestion = questions[currentQuestionIndex];
+  const currentStats = getQuestionStats(currentQuestion.id);
 
   const handleAnswer = (answer: number, timeSpent: number) => {
     const isCorrect = answer === currentQuestion.answer;
@@ -91,6 +96,7 @@ export default function Quiz() {
     setAnswers(prev => [...prev, userAnswer]);
     setShowResult(true);
     void saveAnswerHistory(sessionId, userAnswer);
+    updateQuestionStats(currentQuestion.id, isCorrect);
 
     // Update card with spaced repetition
     const cardIndex = cards.findIndex(c => c.questionId === currentQuestion.id);
@@ -215,6 +221,7 @@ export default function Quiz() {
           onAnswer={handleAnswer}
           showResult={showResult}
           selectedAnswer={showResult ? answers[answers.length - 1]?.answer : undefined}
+          lastResult={currentStats?.lastResult}
         />
         
         {showResult && (
