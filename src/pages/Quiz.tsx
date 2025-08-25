@@ -4,7 +4,7 @@ import { QuizCard } from "@/components/quiz-card";
 import { Button } from "@/components/ui/button";
 import { subjects } from "@/data/questions";
 import { SpacedRepetitionScheduler } from "@/lib/scheduler";
-import { UserAnswer, Card, Question } from "@/lib/types";
+import { UserAnswer, Card } from "@/lib/types";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { saveAnswerHistory } from "@/lib/answer-history";
 import {
@@ -12,6 +12,11 @@ import {
   getQuestionStats,
   getLowAccuracyQuestionIds,
 } from "@/lib/answer-stats";
+import {
+  getQuizProgress,
+  saveQuizProgress,
+  clearQuizProgress,
+} from "@/lib/quiz-progress";
 
 export default function Quiz() {
   const { unitId } = useParams<{ unitId: string }>();
@@ -23,6 +28,8 @@ export default function Quiz() {
   const [cards, setCards] = useState<Card[]>([]);
   const [isComplete, setIsComplete] = useState(false);
   const [sessionId] = useState(() => crypto.randomUUID());
+  const [resumePrompt, setResumePrompt] = useState(false);
+  const [savedIndex, setSavedIndex] = useState(0);
 
   // Find unit and questions or handle review-all case
   let unit, questions;
@@ -56,12 +63,22 @@ export default function Quiz() {
   useEffect(() => {
     if (questions.length > 0) {
       // Initialize cards for questions
-      const initialCards = questions.map(q => 
+      const initialCards = questions.map(q =>
         SpacedRepetitionScheduler.createNewCard(q.id)
       );
       setCards(initialCards);
     }
-  }, [questions.length]);
+  }, [questions]);
+
+  useEffect(() => {
+    if (unitId) {
+      const saved = getQuizProgress(unitId);
+      if (saved > 0 && saved < questions.length) {
+        setResumePrompt(true);
+        setSavedIndex(saved);
+      }
+    }
+  }, [unitId, questions]);
 
   if (!unit || questions.length === 0) {
     return (
@@ -69,6 +86,40 @@ export default function Quiz() {
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">クイズが見つかりません</h1>
           <Button onClick={() => navigate('/')}>ホームに戻る</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (resumePrompt) {
+    return (
+      <div className="min-h-screen gradient-learning flex items-center justify-center">
+        <div className="text-center space-y-6 p-6 bg-background/80 backdrop-blur-sm rounded-xl border card-elevated">
+          <div>
+            <h2 className="text-2xl font-bold mb-2">前回の続きから</h2>
+            <p className="text-muted-foreground">前回は {savedIndex} 問目まで解答しました。</p>
+          </div>
+          <div className="flex gap-4 justify-center">
+            <Button
+              className="gradient-primary"
+              onClick={() => {
+                setCurrentQuestionIndex(savedIndex);
+                setResumePrompt(false);
+              }}
+            >
+              続きから
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                clearQuizProgress(unitId!);
+                setCurrentQuestionIndex(0);
+                setResumePrompt(false);
+              }}
+            >
+              最初から
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -97,6 +148,7 @@ export default function Quiz() {
     setShowResult(true);
     void saveAnswerHistory(sessionId, userAnswer);
     updateQuestionStats(currentQuestion.id, isCorrect);
+    saveQuizProgress(unitId!, currentQuestionIndex + 1);
 
     // Update card with spaced repetition
     const cardIndex = cards.findIndex(c => c.questionId === currentQuestion.id);
@@ -114,11 +166,14 @@ export default function Quiz() {
   };
 
   const handleNext = () => {
-    if (currentQuestionIndex + 1 >= questions.length) {
+    const nextIndex = currentQuestionIndex + 1;
+    if (nextIndex >= questions.length) {
       setIsComplete(true);
+      clearQuizProgress(unitId!);
     } else {
-      setCurrentQuestionIndex(prev => prev + 1);
+      setCurrentQuestionIndex(nextIndex);
       setShowResult(false);
+      saveQuizProgress(unitId!, nextIndex);
     }
   };
 
@@ -127,10 +182,12 @@ export default function Quiz() {
     setAnswers([]);
     setShowResult(false);
     setIsComplete(false);
+    clearQuizProgress(unitId!);
   };
 
   const handleFinish = () => {
     const score = Math.round((answers.filter(a => a.isCorrect).length / answers.length) * 100);
+    clearQuizProgress(unitId!);
     navigate(`/result?score=${score}&total=${questions.length}&correct=${answers.filter(a => a.isCorrect).length}`);
   };
 
