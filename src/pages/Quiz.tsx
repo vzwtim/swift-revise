@@ -71,14 +71,13 @@ export default function Quiz() {
   }, [questions]);
 
   useEffect(() => {
-    if (unitId) {
-      const saved = getQuizProgress(unitId);
-      if (saved > 0 && saved < questions.length) {
-        setResumePrompt(true);
-        setSavedIndex(saved);
-      }
+    if (!unitId || questions.length === 0) return;
+    const saved = getQuizProgress(unitId);
+    if (saved > 0 && saved < questions.length) {
+      setResumePrompt(true);
+      setSavedIndex(saved);
     }
-  }, [unitId, questions]);
+  }, [unitId, questions.length]);
 
   if (!unit || questions.length === 0) {
     return (
@@ -104,6 +103,8 @@ export default function Quiz() {
               className="gradient-primary"
               onClick={() => {
                 setCurrentQuestionIndex(savedIndex);
+                setShowResult(false);
+                setAnswers([]);
                 setResumePrompt(false);
               }}
             >
@@ -114,6 +115,8 @@ export default function Quiz() {
               onClick={() => {
                 clearQuizProgress(unitId!);
                 setCurrentQuestionIndex(0);
+                setShowResult(false);
+                setAnswers([]);
                 setResumePrompt(false);
               }}
             >
