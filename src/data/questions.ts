@@ -1,5 +1,6 @@
 import { Question, Subject } from '@/lib/types';
-import aresCsv from './ARES2024.csv?raw';
+import ares2023Csv from './ARES2023.csv?raw';
+import ares2024Csv from './ARES2024.csv?raw';
 
 const SUBJECT_MAP: Record<string, string> = {
   '101': '企業と不動産',
@@ -10,7 +11,7 @@ const SUBJECT_MAP: Record<string, string> = {
   '106': '不動産証券化と倫理行動',
 };
 
-const parseAresCsv = (csv: string): Question[] => {
+const parseAresCsv = (csv: string, year: string): Question[] => {
   const lines = csv.trim().split(/\r?\n/);
   const rows: string[] = [];
   let buffer: string[] = [];
@@ -37,7 +38,7 @@ const parseAresCsv = (csv: string): Question[] => {
       const subjectName = SUBJECT_MAP[subjectCode];
       if (!subjectName) return null;
       return {
-        id: `ares-${problemNo}-${subId}`,
+        id: `ares-${year}-${problemNo}-${subId}`,
         subject: subjectName,
         unit: '○×問題',
         question: stem,
@@ -49,7 +50,10 @@ const parseAresCsv = (csv: string): Question[] => {
     .filter((q): q is Question => q !== null);
 };
 
-export const aresQuestions = parseAresCsv(aresCsv);
+const ares2023Questions = parseAresCsv(ares2023Csv, '2023');
+const ares2024Questions = parseAresCsv(ares2024Csv, '2024');
+
+export const aresQuestions = [...ares2023Questions, ...ares2024Questions];
 
 export const subjects: Subject[] = Object.entries(SUBJECT_MAP).map(([code, name]) => {
   const questions = aresQuestions.filter((q) => q.subject === name);
