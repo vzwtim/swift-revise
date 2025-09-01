@@ -4,7 +4,7 @@ import { QuizCard } from "@/components/quiz-card";
 import { Button } from "@/components/ui/button";
 import { subjects } from "@/data/questions";
 import { SpacedRepetitionScheduler } from "@/lib/scheduler";
-import { UserAnswer, Card } from "@/lib/types";
+import { UserAnswer, Card, Question, Unit } from "@/lib/types";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { saveAnswerHistory } from "@/lib/answer-history";
 import {
@@ -30,35 +30,47 @@ export default function Quiz() {
   const [sessionId] = useState(() => crypto.randomUUID());
   const [resumePrompt, setResumePrompt] = useState(false);
   const [savedIndex, setSavedIndex] = useState(0);
+  const [unit, setUnit] = useState<Unit | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
 
-  // Find unit and questions or handle review-all case
-  let unit, questions;
-  
-  if (unitId === 'review-all') {
-    // 一括復習: 正答率が低い問題のみを収集
-    const allQuestions = subjects.flatMap(s => s.units.flatMap(u => u.questions));
-    const lowIds = new Set(getLowAccuracyQuestionIds());
-    const reviewQuestions = allQuestions.filter(q => lowIds.has(q.id));
+  useEffect(() => {
+    if (!unitId) return;
 
-    unit = {
-      id: 'review-all',
-      name: '一括復習',
-      description: 'すべての単元の復習対象問題',
-      subjectId: 'all'
-    };
-    questions = reviewQuestions;
-  } else {
-    // 通常の単元別クイズ。正答率が低い問題を優先して出題
-    unit = subjects
-      .flatMap(s => s.units)
-      .find(u => u.id === unitId);
-    const lowIds = new Set(getLowAccuracyQuestionIds());
-    questions = (unit?.questions || []).slice().sort((a, b) => {
-      const aLow = lowIds.has(a.id);
-      const bLow = lowIds.has(b.id);
-      return aLow === bLow ? 0 : aLow ? -1 : 1;
-    });
-  }
+    if (unitId === "review-all") {
+      // 一括復習: 正答率が低い問題のみを収集
+      const allQuestions = subjects.flatMap((s) =>
+        s.units.flatMap((u) => u.questions)
+      );
+      const lowIds = new Set(getLowAccuracyQuestionIds());
+      const reviewQuestions = allQuestions.filter((q) => lowIds.has(q.id));
+
+      setUnit({
+        id: "review-all",
+        name: "一括復習",
+        description: "すべての単元の復習対象問題",
+        subjectId: "all",
+        questions: reviewQuestions,
+        dueCards: 0,
+        newCards: reviewQuestions.length,
+      });
+      setQuestions(reviewQuestions);
+    } else {
+      // 通常の単元別クイズ。正答率が低い問題を優先して出題
+      const foundUnit = subjects
+        .flatMap((s) => s.units)
+        .find((u) => u.id === unitId);
+      setUnit(foundUnit || null);
+      const lowIds = new Set(getLowAccuracyQuestionIds());
+      const sortedQuestions = (foundUnit?.questions || [])
+        .slice()
+        .sort((a, b) => {
+          const aLow = lowIds.has(a.id);
+          const bLow = lowIds.has(b.id);
+          return aLow === bLow ? 0 : aLow ? -1 : 1;
+        });
+      setQuestions(sortedQuestions);
+    }
+  }, [unitId]);
   
   useEffect(() => {
     if (questions.length > 0) {
