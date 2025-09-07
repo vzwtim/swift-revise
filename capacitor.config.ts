@@ -1,13 +1,9 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.ec172ed8f06f41d0af01e6490bb69931',
+  appId: 'app.swiftrevise',
   appName: 'swift-revise',
   webDir: 'dist',
-  server: {
-    url: 'https://ec172ed8-f06f-41d0-af01-e6490bb69931.lovableproject.com?forceHideBadge=true',
-    cleartext: true
-  },
   plugins: {
     SplashScreen: {
       launchShowDuration: 3000,

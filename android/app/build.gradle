@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "app.lovable.ec172ed8f06f41d0af01e6490bb69931"
+    namespace "app.swiftrevise"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "app.lovable.ec172ed8f06f41d0af01e6490bb69931"
+        applicationId "app.swiftrevise"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
