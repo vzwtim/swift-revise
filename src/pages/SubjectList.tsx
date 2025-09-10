@@ -1,14 +1,19 @@
 import { SubjectCard } from "@/components/subject-card";
 import { subjects } from "@/data/questions";
 import { GraduationCap, BarChart3, RefreshCw, BookOpen } from "lucide-react";
+import { DailyProgressChart } from "@/components/daily-progress-chart";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getAllQuestionStats, getLowAccuracyQuestionIds } from "@/lib/answer-stats";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { getAllQuestionStats, getLowAccuracyQuestionIds, getDailyTarget, setDailyTarget } from "@/lib/answer-stats";
 
 export default function SubjectList() {
   const navigate = useNavigate();
+  const [target, setTarget] = useState<number>(getDailyTarget());
 
   const handleStartLearning = (subjectId: string) => {
     navigate(`/subjects/${subjectId}`);
@@ -43,6 +48,12 @@ export default function SubjectList() {
   const totalNewCards = updatedSubjects.reduce((sum, subject) =>
     sum + subject.units.reduce((unitSum, unit) => unitSum + unit.newCards, 0), 0
   );
+
+  const handleTargetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = Number(e.target.value);
+    setTarget(value);
+    setDailyTarget(value);
+  };
 
   return (
     <div className="min-h-screen gradient-learning">
@@ -129,11 +140,24 @@ export default function SubjectList() {
           ))}
         </div>
 
-        <div className="mt-12 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-sm text-primary">
-            <span>🧠</span>
-            <span>SM-2アルゴリズムによる最適化された復習スケジュール</span>
+        <div className="mt-12">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-primary" />
+            毎日の回答数
+          </h3>
+          <div className="flex items-center gap-2 mb-4">
+            <Label htmlFor="target" className="text-sm">
+              目標
+            </Label>
+            <Input
+              id="target"
+              type="number"
+              value={target}
+              onChange={handleTargetChange}
+              className="w-24 h-8"
+            />
           </div>
+          <DailyProgressChart target={target} />
         </div>
       </main>
     </div>
