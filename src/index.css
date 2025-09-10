@@ -171,11 +171,11 @@ All colors MUST be HSL.
   }
 
   .quiz-answer-correct {
-    @apply bg-success/10 border-success text-success-foreground;
+    @apply bg-success/10 border-success text-success;
   }
 
   .quiz-answer-incorrect {
-    @apply bg-destructive/10 border-destructive text-destructive-foreground;
+    @apply bg-destructive/10 border-destructive text-destructive;
   }
 
   .progress-ring {

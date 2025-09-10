@@ -1,6 +1,7 @@
 import { SubjectCard } from "@/components/subject-card";
 import { subjects } from "@/data/questions";
 import { GraduationCap, BarChart3, RefreshCw, BookOpen } from "lucide-react";
+import { DailyProgressChart } from "@/components/daily-progress-chart";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -129,11 +130,12 @@ export default function SubjectList() {
           ))}
         </div>
 
-        <div className="mt-12 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-sm text-primary">
-            <span>🧠</span>
-            <span>SM-2アルゴリズムによる最適化された復習スケジュール</span>
-          </div>
+        <div className="mt-12">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-primary" />
+            毎日の回答数
+          </h3>
+          <DailyProgressChart />
         </div>
       </main>
     </div>
