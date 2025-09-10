@@ -5,6 +5,7 @@ interface ProgressRingProps {
   size?: number;
   strokeWidth?: number;
   className?: string;
+  colorClassName?: string;
   children?: React.ReactNode;
 }
 
@@ -13,6 +14,7 @@ export function ProgressRing({
   size = 120,
   strokeWidth = 8,
   className,
+  colorClassName = "text-primary",
   children,
 }: ProgressRingProps) {
   const normalizedRadius = (size - strokeWidth) / 2;
@@ -36,7 +38,7 @@ export function ProgressRing({
           r={normalizedRadius}
           cx={size / 2}
           cy={size / 2}
-          className="progress-ring text-primary transition-all duration-300 ease-in-out"
+          className={cn("progress-ring transition-all duration-300 ease-in-out", colorClassName)}
         />
         <circle
           stroke="currentColor"

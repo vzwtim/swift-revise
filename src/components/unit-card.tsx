@@ -10,8 +10,6 @@ interface UnitCardProps {
 }
 
 export function UnitCard({ unit, onStartQuiz }: UnitCardProps) {
-  const hasCards = unit.dueCards > 0 || unit.newCards > 0;
-
   return (
     <Card className="card-elevated hover:shadow-lg transition-all duration-200 group">
       <CardHeader className="pb-3">
@@ -31,29 +29,12 @@ export function UnitCard({ unit, onStartQuiz }: UnitCardProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 mb-4">
-          {unit.dueCards > 0 && (
-            <Badge variant="destructive" className="text-xs">
-              <Clock className="h-3 w-3 mr-1" />
-              復習 {unit.dueCards}
-            </Badge>
-          )}
-          {unit.newCards > 0 && (
-            <Badge variant="secondary" className="text-xs">
-              <Plus className="h-3 w-3 mr-1" />
-              新規 {unit.newCards}
-            </Badge>
-          )}
-        </div>
-
         <Button 
           onClick={() => onStartQuiz(unit.id)}
           className="w-full"
-          variant={hasCards ? "default" : "outline"}
           size="sm"
-          disabled={!hasCards}
         >
-          {hasCards ? "クイズを開始" : "準備中"}
+          クイズを開始
         </Button>
       </CardContent>
     </Card>

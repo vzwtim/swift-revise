@@ -9,32 +9,64 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getAllQuestionStats, getLowAccuracyQuestionIds, getDailyTarget, setDailyTarget } from "@/lib/answer-stats";
+import { getAllQuestionStats, getDailyTarget, setDailyTarget } from "@/lib/answer-stats";
+import { loadAllCards } from "@/lib/card-storage";
+import { MasteryLevel } from "@/lib/types";
+import { QuizSettingsDialog } from "@/components/quiz-settings-dialog";
+import { BulkStudyDialog } from "@/components/bulk-study-dialog";
 
 export default function SubjectList() {
   const navigate = useNavigate();
   const [target, setTarget] = useState<number>(getDailyTarget());
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isBulkStudyOpen, setIsBulkStudyOpen] = useState(false);
+  const [quizTarget, setQuizTarget] = useState({ id: '', title: '', description: '' });
+  const [selectedBulkStudyUnitIds, setSelectedBulkStudyUnitIds] = useState<string[]>([]);
+
+  const handleOpenSettings = (targetId: string, title: string, description: string) => {
+    setQuizTarget({ id: targetId, title, description });
+    setIsSettingsOpen(true);
+  };
 
   const handleStartLearning = (subjectId: string) => {
-    navigate(`/subjects/${subjectId}`);
+    const subject = updatedSubjects.find(s => s.id === subjectId);
+    if (!subject) return;
+    // Note: This is now treated as a review of the entire subject
+    handleOpenSettings(
+      `review-${subject.id}`,
+      `${subject.name} の学習`,
+      '出題範囲の習熟度を選択してください。'
+    );
   };
 
-  const handleStartReview = () => {
-    navigate('/quiz/review-all');
+  const handleStartReview = (selectedUnitIds: string[]) => {
+    setSelectedBulkStudyUnitIds(selectedUnitIds);
+    handleOpenSettings(
+      'bulk-study',
+      'まとめて学習',
+      '選択した単元の問題をまとめて学習します。'
+    );
   };
 
-  const stats = getAllQuestionStats();
-  const lowIds = new Set(getLowAccuracyQuestionIds());
+  const allCards = loadAllCards();
 
   const updatedSubjects = subjects.map(subject => {
-    const updatedUnits = subject.units.map(unit => {
-      const dueCards = unit.questions.filter(q => lowIds.has(q.id)).length;
-      const newCards = unit.questions.filter(q => !stats[q.id]).length;
-      return { ...unit, dueCards, newCards };
+    const subjectQuestionIds = new Set(
+      subject.units.flatMap((u) => u.questions.map((q) => q.id))
+    );
+    const subjectCards = Object.values(allCards).filter((c) =>
+      subjectQuestionIds.has(c.questionId)
+    );
+
+    const progressCounts: Partial<Record<MasteryLevel, number>> = {};
+    subjectCards.forEach(card => {
+      const level = card.masteryLevel || 'New';
+      progressCounts[level] = (progressCounts[level] || 0) + 1;
     });
-    const questionIds = new Set(subject.units.flatMap(u => u.questions.map(q => q.id)));
-    const completedQuestions = Object.keys(stats).filter(id => questionIds.has(id)).length;
-    return { ...subject, units: updatedUnits, completedQuestions };
+    
+    const completedQuestions = progressCounts.Perfect || 0;
+
+    return { ...subject, progressCounts, completedQuestions };
   });
 
   const totalQuestions = updatedSubjects.reduce((sum, subject) => sum + subject.totalQuestions, 0);
@@ -85,56 +117,35 @@ export default function SubjectList() {
           </p>
         </div>
 
-        {/* 一括復習カード */}
-        {(totalDueCards > 0 || totalNewCards > 0) && (
+        
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Card className="mb-8 card-elevated border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <RefreshCw className="h-5 w-5 text-primary" />
-                一括復習
+                まとめて学習
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                すべての単元の復習対象問題をまとめて学習
+                学習したい単元を選択してまとめて学習
               </p>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-4 mb-4">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">
-                    {totalDueCards + totalNewCards} 問題
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {totalDueCards > 0 && (
-                    <Badge variant="destructive" className="text-xs">
-                      復習 {totalDueCards}
-                    </Badge>
-                  )}
-                  {totalNewCards > 0 && (
-                    <Badge variant="secondary" className="text-xs">
-                      新規 {totalNewCards}
-                    </Badge>
-                  )}
-                </div>
-              </div>
               <Button 
-                onClick={handleStartReview}
+                onClick={() => setIsBulkStudyOpen(true)}
                 className="w-full"
                 size="sm"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
-                一括復習を開始
+                単元を選択して学習
               </Button>
             </CardContent>
           </Card>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {updatedSubjects.map((subject) => (
             <SubjectCard
               key={subject.id}
               subject={subject}
+              progressCounts={subject.progressCounts}
               onStartLearning={handleStartLearning}
             />
           ))}
@@ -160,6 +171,20 @@ export default function SubjectList() {
           <DailyProgressChart target={target} />
         </div>
       </main>
+      <QuizSettingsDialog
+        open={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
+        targetId={quizTarget.id}
+        title={quizTarget.title}
+        description={quizTarget.description}
+        selectedUnitIds={selectedBulkStudyUnitIds}
+      />
+      <BulkStudyDialog
+        open={isBulkStudyOpen}
+        onOpenChange={setIsBulkStudyOpen}
+        subjects={subjects}
+        onStartBulkStudy={handleStartReview}
+      />
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Question } from "@/lib/types";
+import { Question, MasteryLevel } from "@/lib/types";
 import { Clock, CheckCircle, XCircle } from "lucide-react";
 
 interface QuizCardProps {
@@ -13,6 +13,7 @@ interface QuizCardProps {
   showResult?: boolean;
   selectedAnswer?: number;
   lastResult?: boolean;
+  masteryLevel?: MasteryLevel;
 }
 
 export function QuizCard({
@@ -22,7 +23,8 @@ export function QuizCard({
   onAnswer,
   showResult = false,
   selectedAnswer,
-  lastResult
+  lastResult,
+  masteryLevel,
 }: QuizCardProps) {
   const [startTime] = useState(Date.now());
   const [timeSpent, setTimeSpent] = useState(0);
@@ -42,14 +44,24 @@ export function QuizCard({
     onAnswer(choiceIndex, timeSpent);
   };
 
-  const getDifficultyColor = (difficulty?: string) => {
-    switch (difficulty) {
-      case 'easy': return 'bg-success';
-      case 'medium': return 'bg-warning';
-      case 'hard': return 'bg-destructive';
-      default: return 'bg-muted';
+  const getMasteryLevelStyle = (level?: MasteryLevel) => {
+    switch (level) {
+      case "Perfect":
+        return { text: "Perfect", className: "bg-green-500 text-primary-foreground border-transparent" };
+      case "Great":
+        return { text: "Great", className: "bg-blue-500 text-primary-foreground border-transparent" };
+      case "Good":
+        return { text: "Good", className: "bg-yellow-400 text-primary-foreground border-transparent" };
+      case "Bad":
+        return { text: "Bad", className: "bg-orange-500 text-primary-foreground border-transparent" };
+      case "Miss":
+        return { text: "Miss", className: "bg-red-500 text-primary-foreground border-transparent" };
+      default:
+        return { text: "New", className: "bg-gray-400 text-primary-foreground border-transparent" };
     }
   };
+
+  const masteryStyle = getMasteryLevelStyle(masteryLevel);
 
   const getChoiceStyle = (index: number) => {
     if (!showResult) {
@@ -90,8 +102,8 @@ export function QuizCard({
       <Card className="w-full max-w-2xl mx-auto">
         <CardHeader>
           <div className="flex items-center justify-between mb-2">
-            <Badge variant="outline" className={getDifficultyColor(question.difficulty)}>
-              {question.difficulty || 'medium'}
+            <Badge variant="outline" className={masteryStyle.className}>
+              {masteryStyle.text}
             </Badge>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="h-4 w-4" />

@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { QuizCard } from "@/components/quiz-card";
 import { Button } from "@/components/ui/button";
 import { subjects } from "@/data/questions";
 import { SpacedRepetitionScheduler } from "@/lib/scheduler";
-import { UserAnswer, Card, Question, Unit } from "@/lib/types";
+import { UserAnswer, Card, Question, Unit, MasteryLevel } from "@/lib/types";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { saveAnswerHistory } from "@/lib/answer-history";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   updateQuestionStats,
   getQuestionStats,
@@ -17,11 +19,13 @@ import {
   saveQuizProgress,
   clearQuizProgress,
 } from "@/lib/quiz-progress";
+import { loadAllCards, saveCards } from "@/lib/card-storage";
 
 export default function Quiz() {
   const { unitId } = useParams<{ unitId: string }>();
   const navigate = useNavigate();
-  
+  const location = useLocation();
+
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
   const [showResult, setShowResult] = useState(false);
@@ -32,70 +36,130 @@ export default function Quiz() {
   const [savedIndex, setSavedIndex] = useState(0);
   const [unit, setUnit] = useState<Unit | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [currentCard, setCurrentCard] = useState<Card | null>(null);
+  const [showNoUnitsError, setShowNoUnitsError] = useState(false);
 
   useEffect(() => {
     if (!unitId) return;
 
-    if (unitId === "review-all") {
-      // 一括復習: 正答率が低い問題のみを収集
-      const allQuestions = subjects.flatMap((s) =>
-        s.units.flatMap((u) => u.questions)
-      );
-      const lowIds = new Set(getLowAccuracyQuestionIds());
-      const reviewQuestions = allQuestions.filter((q) => lowIds.has(q.id));
+    const searchParams = new URLSearchParams(location.search);
+    const levelsParam = searchParams.get('levels');
+    const selectedLevels: MasteryLevel[] = levelsParam
+      ? (levelsParam.split(',') as MasteryLevel[])
+      : ['Great', 'Good', 'Bad', 'Miss', 'New']; // Default levels
 
-      setUnit({
-        id: "review-all",
-        name: "一括復習",
-        description: "すべての単元の復習対象問題",
-        subjectId: "all",
-        questions: reviewQuestions,
-        dueCards: 0,
-        newCards: reviewQuestions.length,
-      });
-      setQuestions(reviewQuestions);
+    const unitsParam = searchParams.get('units');
+    const selectedUnitIds: string[] = unitsParam ? unitsParam.split(',') : [];
+
+    // Initialize and load cards
+    const allQuestionsForInit = subjects.flatMap((s) => s.units.flatMap((u) => u.questions));
+    const allCards = loadAllCards();
+    const newCards: Card[] = [];
+    allQuestionsForInit.forEach((q) => {
+      if (!allCards[q.id]) {
+        const newCard = SpacedRepetitionScheduler.createNewCard(q.id);
+        allCards[q.id] = newCard;
+        newCards.push(newCard);
+      }
+    });
+    if (newCards.length > 0) {
+      saveCards(newCards);
+    }
+    setCards(Object.values(allCards));
+
+    // Filter function based on mastery level
+    const filterByLevel = (q: Question): boolean => {
+      const card = allCards[q.id];
+      const level = card?.masteryLevel || 'New';
+      return selectedLevels.includes(level);
+    };
+
+    let questionsToShow: Question[] = [];
+    let pageTitle = '';
+    let pageDescription = '';
+
+    if (unitId === "bulk-study") {
+      if (selectedUnitIds.length === 0) {
+        // No units selected for bulk study, handle this case (e.g., show error or redirect)
+        console.error("No units selected for bulk study.");
+        setShowNoUnitsError(true); // Set error state
+        return;
+      }
+      const allQuestions = subjects.flatMap((s) => s.units.flatMap((u) => u.questions));
+      questionsToShow = allQuestions.filter(q => selectedUnitIds.includes(q.unit)).filter(filterByLevel);
+      pageTitle = 'まとめて学習';
+      pageDescription = '選択した単元の問題';
+    } else if (unitId === "review-all") {
+      const allQuestions = subjects.flatMap((s) => s.units.flatMap((u) => u.questions));
+      questionsToShow = allQuestions.filter(filterByLevel);
+      pageTitle = 'まとめて学習';
+      pageDescription = '選択した習熟度の問題';
+    } else if (unitId.startsWith("review-")) {
+      const subjectId = unitId.replace("review-", "");
+      const foundSubject = subjects.find((s) => s.id === subjectId);
+      if (foundSubject) {
+        const subjectQuestions = foundSubject.units.flatMap((u) => u.questions);
+        questionsToShow = subjectQuestions.filter(filterByLevel);
+        pageTitle = `${foundSubject.name} の復習`;
+        pageDescription = '選択した習熟度の問題';
+      }
     } else {
-      // 通常の単元別クイズ。正答率が低い問題を優先して出題
-      const foundUnit = subjects
-        .flatMap((s) => s.units)
-        .find((u) => u.id === unitId);
-      setUnit(foundUnit || null);
-      const lowIds = new Set(getLowAccuracyQuestionIds());
-      const sortedQuestions = (foundUnit?.questions || [])
-        .slice()
-        .sort((a, b) => {
-          const aLow = lowIds.has(a.id);
-          const bLow = lowIds.has(b.id);
-          return aLow === bLow ? 0 : aLow ? -1 : 1;
-        });
-      setQuestions(sortedQuestions);
+      const foundUnit = subjects.flatMap((s) => s.units).find((u) => u.id === unitId);
+      if (foundUnit) {
+        questionsToShow = [...foundUnit.questions]
+          .filter(filterByLevel)
+          .sort((a, b) => {
+            const cardA = allCards[a.id];
+            const cardB = allCards[b.id];
+            const needsReviewA = cardA?.needsReview ?? true;
+            const needsReviewB = cardB?.needsReview ?? true;
+            if (needsReviewA === needsReviewB) return 0;
+            return needsReviewA ? -1 : 1;
+          });
+        pageTitle = foundUnit.name;
+        pageDescription = 'クイズモード';
+      }
     }
-  }, [unitId]);
-  
-  useEffect(() => {
-    if (questions.length > 0) {
-      // Initialize cards for questions
-      const initialCards = questions.map(q =>
-        SpacedRepetitionScheduler.createNewCard(q.id)
-      );
-      setCards(initialCards);
-    }
-  }, [questions]);
 
-  useEffect(() => {
-    if (!unitId || questions.length === 0) return;
-    const saved = getQuizProgress(unitId);
-    if (saved > 0 && saved < questions.length) {
-      setResumePrompt(true);
-      setSavedIndex(saved);
+    setUnit({
+      id: unitId,
+      name: pageTitle,
+      description: pageDescription,
+      subjectId: '', // This might need adjustment
+      questions: questionsToShow,
+      dueCards: 0,
+      newCards: questionsToShow.length,
+    });
+    setQuestions(questionsToShow);
+
+    // Disable resume prompt for review modes
+    if (!unitId.startsWith("review-")) {
+      const saved = getQuizProgress(unitId);
+      if (saved > 0 && saved < questionsToShow.length) {
+        setResumePrompt(true);
+        setSavedIndex(saved);
+      }
     }
-  }, [unitId, questions.length]);
+  }, [unitId, location.search]);
+
+  if (showNoUnitsError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center gradient-learning">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">まとめて学習の単元が選択されていません</h1>
+          <p className="text-muted-foreground mb-4">まとめて学習を行うには、学習する単元を選択してください。</p>
+          <Button onClick={() => navigate('/')}>ホームに戻る</Button>
+        </div>
+      </div>
+    );
+  }
 
   if (!unit || questions.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center gradient-learning">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">クイズが見つかりません</h1>
+          <p className="text-muted-foreground mb-4">選択したレベルの問題がないか、単元が見つかりませんでした。</p>
           <Button onClick={() => navigate('/')}>ホームに戻る</Button>
         </div>
       </div>
@@ -155,29 +219,60 @@ export default function Quiz() {
         answer,
         timeSpent,
         isCorrect,
-        grade: 0
-      })
+        grade: 0,
+      }),
     };
 
-    setAnswers(prev => [...prev, userAnswer]);
+    setAnswers((prev) => [...prev, userAnswer]);
     setShowResult(true);
     void saveAnswerHistory(sessionId, userAnswer);
+    
+    // Update stats before scheduling
     updateQuestionStats(currentQuestion.id, isCorrect);
+    const newStats = getQuestionStats(currentQuestion.id);
+
     saveQuizProgress(unitId!, currentQuestionIndex + 1);
 
     // Update card with spaced repetition
-    const cardIndex = cards.findIndex(c => c.questionId === currentQuestion.id);
-    if (cardIndex !== -1) {
+    const cardIndex = cards.findIndex((c) => c.questionId === currentQuestion.id);
+    if (cardIndex !== -1 && newStats) {
       const updatedCard = SpacedRepetitionScheduler.scheduleCard(
-        cards[cardIndex], 
-        userAnswer.grade
+        cards[cardIndex],
+        userAnswer.grade,
+        newStats
       );
-      setCards(prev => {
+      setCards((prev) => {
         const newCards = [...prev];
         newCards[cardIndex] = updatedCard;
+        saveCards([updatedCard]); // Persist inside the callback
         return newCards;
       });
+      setCurrentCard(updatedCard);
     }
+  };
+
+  const handleToggleReview = () => {
+    const cardIndex = cards.findIndex((c) => c.questionId === currentQuestion.id);
+    if (cardIndex === -1) return;
+
+    const updatedCards = [...cards];
+    const targetCard = updatedCards[cardIndex];
+
+    // Toggle the review status
+    const newNeedsReview = !targetCard.needsReview;
+    const updatedCard = {
+        ...targetCard,
+        needsReview: newNeedsReview,
+        // If manually set to review, reset consecutive correct answers
+        consecutiveCorrectAnswers: newNeedsReview
+          ? 0
+          : targetCard.consecutiveCorrectAnswers,
+      };
+    updatedCards[cardIndex] = updatedCard;
+
+    setCards(updatedCards);
+    saveCards([updatedCard]); // Persist the change
+    setCurrentCard(updatedCard);
   };
 
   const handleNext = () => {
@@ -278,8 +373,8 @@ export default function Quiz() {
               戻る
             </Button>
             <div>
-              <h1 className="text-lg font-semibold">{unit.name}</h1>
-              <p className="text-sm text-muted-foreground">クイズモード</p>
+              <h1 className="text-lg font-semibold">{unit?.name}</h1>
+              <p className="text-sm text-muted-foreground">{unit?.description}</p>
             </div>
           </div>
         </div>
@@ -294,17 +389,48 @@ export default function Quiz() {
           showResult={showResult}
           selectedAnswer={showResult ? answers[answers.length - 1]?.answer : undefined}
           lastResult={currentStats?.lastResult}
+          masteryLevel={currentCard?.masteryLevel}
         />
         
         {showResult && (
           <>
+            <div className="max-w-2xl mx-auto mt-6 p-4 border rounded-lg bg-background/50">
+              <div className="flex items-center space-x-3">
+                <Checkbox
+                  id="force-review"
+                  checked={
+                    answers[answers.length - 1]?.isCorrect
+                      ? currentCard?.needsReview
+                      : true
+                  }
+                  onCheckedChange={handleToggleReview}
+                  disabled={!answers[answers.length - 1]?.isCorrect}
+                />
+                <Label
+                  htmlFor="force-review"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  この問題を復習リストに残す
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2 pl-1">
+                {answers[answers.length - 1]?.isCorrect
+                  ? currentCard?.needsReview
+                    ? "チェックを外すと、次回からこの問題は出題されにくくなります。"
+                    : "3回連続正解したため自動で復習対象から外れました。再度学習したい場合はチェックを入れてください。"
+                  : "不正解だったため、この問題は自動的に復習リストに残ります。"}
+              </p>
+            </div>
+
             <div className="text-center mt-8 hidden sm:block">
               <Button
                 onClick={handleNext}
                 size="lg"
                 className="gradient-primary"
               >
-                {currentQuestionIndex + 1 >= questions.length ? "完了" : "次の問題"}
+                {currentQuestionIndex + 1 >= questions.length
+                  ? "完了"
+                  : "次の問題"}
               </Button>
             </div>
             <div className="sm:hidden fixed bottom-4 left-0 right-0 px-4">
@@ -313,7 +439,9 @@ export default function Quiz() {
                 size="lg"
                 className="w-full gradient-primary"
               >
-                {currentQuestionIndex + 1 >= questions.length ? "完了" : "次の問題"}
+                {currentQuestionIndex + 1 >= questions.length
+                  ? "完了"
+                  : "次の問題"}
               </Button>
             </div>
           </>

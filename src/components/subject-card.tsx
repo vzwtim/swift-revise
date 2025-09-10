@@ -1,25 +1,27 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ProgressRing } from "@/components/ui/progress-ring";
-import { Subject } from "@/lib/types";
+import { MasteryPieChart } from "@/components/mastery-pie-chart";
+import { Subject, MasteryLevel } from "@/lib/types";
 import { BookOpen, Clock, CheckCircle2 } from "lucide-react";
 
 interface SubjectCardProps {
-  subject: Subject;
+  subject: Subject & { completedQuestions: number };
+  progressCounts: Partial<Record<MasteryLevel, number>>;
   onStartLearning: (subjectId: string) => void;
 }
 
-export function SubjectCard({ subject, onStartLearning }: SubjectCardProps) {
-  const completionRate = Math.round((subject.completedQuestions / subject.totalQuestions) * 100);
-  const totalDueCards = subject.units.reduce((sum, unit) => sum + unit.dueCards, 0);
-  const totalNewCards = subject.units.reduce((sum, unit) => sum + unit.newCards, 0);
+export function SubjectCard({ subject, progressCounts, onStartLearning }: SubjectCardProps) {
+  // このカード内で使われている古い統計ロジックは削除または修正が必要
+  // const completionRate = Math.round((subject.completedQuestions / subject.totalQuestions) * 100);
+  const totalDueCards = (progressCounts.Bad || 0) + (progressCounts.Miss || 0);
+  const totalNewCards = progressCounts.New || 0;
 
   return (
     <Card className="card-elevated hover:shadow-lg transition-all duration-200 group">
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
-          <div className="flex-1">
+          <div className="flex-1 pr-4">
             <CardTitle className="text-lg font-semibold group-hover:text-primary transition-colors">
               {subject.name}
             </CardTitle>
@@ -27,36 +29,26 @@ export function SubjectCard({ subject, onStartLearning }: SubjectCardProps) {
               {subject.description}
             </p>
           </div>
-          <ProgressRing progress={completionRate} size={60} strokeWidth={4}>
-            <span className="text-xs font-medium">{completionRate}%</span>
-          </ProgressRing>
+          <MasteryPieChart
+            progressCounts={progressCounts}
+            totalQuestions={subject.totalQuestions}
+            size={60}
+          />
         </div>
       </CardHeader>
       
       <CardContent className="pt-0">
-        <div className="flex items-center gap-4 mb-4 text-sm text-muted-foreground">
+        <div className="flex items-center justify-between mb-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-1">
             <BookOpen className="h-4 w-4" />
             <span>{subject.totalQuestions} 問題</span>
           </div>
-          <div className="flex items-center gap-1">
-            <CheckCircle2 className="h-4 w-4" />
-            <span>{subject.completedQuestions} 完了</span>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-green-500 font-medium" title="Perfect">P: {progressCounts.Perfect || 0}</span>
+            <span className="text-blue-500 font-medium" title="Great">G: {progressCounts.Great || 0}</span>
+            <span className="text-yellow-400 font-medium" title="Good">g: {progressCounts.Good || 0}</span>
+            <span className="text-orange-500 font-medium" title="Bad">B: {progressCounts.Bad || 0}</span>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2 mb-4">
-          {totalDueCards > 0 && (
-            <Badge variant="destructive" className="text-xs">
-              <Clock className="h-3 w-3 mr-1" />
-              復習 {totalDueCards}
-            </Badge>
-          )}
-          {totalNewCards > 0 && (
-            <Badge variant="secondary" className="text-xs">
-              新規 {totalNewCards}
-            </Badge>
-          )}
         </div>
 
         <Button 

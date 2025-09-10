@@ -17,6 +17,17 @@ export interface Card {
   easeFactor: number;
   dueDate: number; // timestamp
   lastReviewed?: number; // timestamp
+  consecutiveCorrectAnswers: number;
+  needsReview: boolean;
+  masteryLevel: MasteryLevel;
+}
+
+export type MasteryLevel = "Perfect" | "Great" | "Good" | "Bad" | "Miss" | "New";
+
+export interface QuestionStats {
+  correct: number;
+  total: number;
+  lastResult: boolean;
 }
 
 export interface ReviewSession {

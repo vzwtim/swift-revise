@@ -1,8 +1,4 @@
-interface QuestionStats {
-  correct: number;
-  total: number;
-  lastResult: boolean;
-}
+import { QuestionStats } from "./types";
 
 const STORAGE_KEY = 'questionStats';
 const DAILY_KEY = 'dailyAnswerCounts';
