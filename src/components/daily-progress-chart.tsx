@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
-import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { getDailyAnswerCounts } from "@/lib/answer-stats";
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import { getMonthlyAnswerCounts } from "@/lib/answer-stats";
 
-export function DailyProgressChart() {
+interface Props {
+  target: number;
+}
+
+export function DailyProgressChart({ target }: Props) {
   const [data, setData] = useState<{ date: string; count: number }[]>([]);
 
   useEffect(() => {
-    setData(getDailyAnswerCounts());
+    const now = new Date();
+    setData(getMonthlyAnswerCounts(now.getFullYear(), now.getMonth()));
   }, []);
 
   return (
@@ -16,6 +21,14 @@ export function DailyProgressChart() {
           <XAxis dataKey="date" />
           <Tooltip />
           <Bar dataKey="count" fill="hsl(var(--primary))" />
+          {target > 0 && (
+            <ReferenceLine
+              y={target}
+              stroke="hsl(var(--secondary))"
+              strokeDasharray="4 4"
+              label="目標"
+            />
+          )}
         </BarChart>
       </ResponsiveContainer>
     </div>
