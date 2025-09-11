@@ -1,4 +1,4 @@
-import { Card, UserAnswer, QuestionStats, MasteryLevel } from './types';
+import { Card, UserAnswer, MasteryLevel } from './types';
 
 // Simplified SM-2 Algorithm for spaced repetition
 export class SpacedRepetitionScheduler {
@@ -17,13 +17,14 @@ export class SpacedRepetitionScheduler {
       consecutiveCorrectAnswers: 0,
       needsReview: true,
       masteryLevel: "New",
+      correct_count: 0,
+      total_count: 0,
     };
   }
 
   static calculateMasteryLevel(
     isCorrect: boolean,
-    currentMasteryLevel: MasteryLevel,
-    stats: QuestionStats
+    currentMasteryLevel: MasteryLevel
   ): MasteryLevel {
     const levels: MasteryLevel[] = ["Miss", "Bad", "New", "Good", "Great", "Perfect"];
     const currentIndex = levels.indexOf(currentMasteryLevel);
@@ -46,12 +47,10 @@ export class SpacedRepetitionScheduler {
       }
     }
 
-    
-
     return newLevel;
   }
 
-  static scheduleCard(card: Card, grade: 0 | 1 | 2, stats: QuestionStats): Card {
+  static scheduleCard(card: Card, grade: 0 | 1 | 2): Card {
     const newCard = { ...card };
     newCard.lastReviewed = Date.now();
 
@@ -69,8 +68,7 @@ export class SpacedRepetitionScheduler {
     // Update mastery level
     newCard.masteryLevel = this.calculateMasteryLevel(
       grade > 0, // isCorrect
-      card.masteryLevel, // currentMasteryLevel
-      stats
+      card.masteryLevel // currentMasteryLevel
     );
 
     if (grade === 0) {

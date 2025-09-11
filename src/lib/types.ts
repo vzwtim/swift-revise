@@ -20,6 +20,8 @@ export interface Card {
   consecutiveCorrectAnswers: number;
   needsReview: boolean;
   masteryLevel: MasteryLevel;
+  correct_count: number;
+  total_count: number;
 }
 
 export type MasteryLevel = "Perfect" | "Great" | "Good" | "Bad" | "Miss" | "New";

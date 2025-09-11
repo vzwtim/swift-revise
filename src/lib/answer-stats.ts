@@ -1,36 +1,26 @@
-import { QuestionStats } from "./types";
+// import { QuestionStats } from "./types";
 
-const STORAGE_KEY = 'questionStats';
 const DAILY_KEY = 'dailyAnswerCounts';
 const TARGET_KEY = 'dailyTargetCount';
 
 type DailyCount = { correct: number; incorrect: number };
 
-function loadStats(): Record<string, QuestionStats> {
-  if (typeof window === 'undefined') return {};
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveStats(stats: Record<string, QuestionStats>): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
-  } catch {
-    // ignore write errors
-  }
-}
-
 function loadDailyCounts(): Record<string, DailyCount> {
   if (typeof window === 'undefined') return {};
   try {
     const raw = window.localStorage.getItem(DAILY_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
+    const data = raw ? JSON.parse(raw) : {};
+
+    if (data && Object.values(data).some(v => typeof v === 'number')) {
+      console.warn('Old daily count data format detected and cleared.');
+      window.localStorage.removeItem(DAILY_KEY);
+      return {};
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error loading daily counts, clearing data:', error);
+    window.localStorage.removeItem(DAILY_KEY);
     return {};
   }
 }
@@ -63,7 +53,7 @@ function saveTarget(target: number): void {
   }
 }
 
-function recordDailyAnswer(isCorrect: boolean): void {
+export function recordDailyAnswer(isCorrect: boolean): void {
   const counts = loadDailyCounts();
   const today = new Date().toISOString().slice(0, 10);
   const todaysCount = counts[today] || { correct: 0, incorrect: 0 };
@@ -76,25 +66,6 @@ function recordDailyAnswer(isCorrect: boolean): void {
   saveDailyCounts(counts);
 }
 
-export function updateQuestionStats(questionId: string, isCorrect: boolean): void {
-  const stats = loadStats();
-  const current = stats[questionId] || { correct: 0, total: 0, lastResult: false };
-  current.total += 1;
-  if (isCorrect) current.correct += 1;
-  current.lastResult = isCorrect;
-  stats[questionId] = current;
-  saveStats(stats);
-  recordDailyAnswer(isCorrect);
-}
-
-export function getQuestionStats(questionId: string): QuestionStats | null {
-  const stats = loadStats();
-  return stats[questionId] || null;
-}
-
-export function getAllQuestionStats(): Record<string, QuestionStats> {
-  return loadStats();
-}
 
 export function getDailyAnswerCounts(days = 7): { date: string; correct: number; incorrect: number }[] {
   if (typeof window === 'undefined') return [];
@@ -120,9 +91,7 @@ export function getMonthlyAnswerCounts(year: number, month: number): { date: str
     const d = new Date(year, month, day);
     const key = d.toISOString().slice(0, 10);
     const label = `${month + 1}/${day}`;
-    // This function needs to be updated to handle the new data structure
-    // For now, it will return incorrect data.
-    const count = counts[key] as any; // Cast to any to avoid TS error for now
+    const count = counts[key] as any;
     result.push({ date: label, count: (count?.correct || 0) + (count?.incorrect || 0) });
   }
   return result;
@@ -134,11 +103,4 @@ export function getDailyTarget(): number {
 
 export function setDailyTarget(target: number): void {
   saveTarget(target);
-}
-
-export function getLowAccuracyQuestionIds(threshold = 0.7): string[] {
-  const stats = loadStats();
-  return Object.entries(stats)
-    .filter(([, s]) => s.total > 0 && s.correct / s.total < threshold)
-    .map(([id]) => id);
 }

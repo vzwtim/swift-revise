@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+
 import { QuizCard } from "@/components/quiz-card";
 import { Button } from "@/components/ui/button";
 import { subjects } from "@/data/questions";
@@ -7,29 +8,25 @@ import { SpacedRepetitionScheduler } from "@/lib/scheduler";
 import { UserAnswer, Card, Question, Unit, MasteryLevel } from "@/lib/types";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { saveAnswerHistory } from "@/lib/answer-history";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import {
-  updateQuestionStats,
-  getQuestionStats,
-  getLowAccuracyQuestionIds,
-} from "@/lib/answer-stats";
+import { recordDailyAnswer } from "@/lib/answer-stats";
 import {
   getQuizProgress,
   saveQuizProgress,
   clearQuizProgress,
 } from "@/lib/quiz-progress";
 import { loadAllCards, saveCards } from "@/lib/card-storage";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Quiz() {
   const { unitId } = useParams<{ unitId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
   const [showResult, setShowResult] = useState(false);
-  const [cards, setCards] = useState<Card[]>([]);
+  const [cards, setCards] = useState<{ [questionId: string]: Card }>({});
   const [isComplete, setIsComplete] = useState(false);
   const [sessionId] = useState(() => crypto.randomUUID());
   const [resumePrompt, setResumePrompt] = useState(false);
@@ -38,116 +35,202 @@ export default function Quiz() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentCard, setCurrentCard] = useState<Card | null>(null);
   const [showNoUnitsError, setShowNoUnitsError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  
 
   useEffect(() => {
     if (!unitId) return;
 
-    const searchParams = new URLSearchParams(location.search);
-    const levelsParam = searchParams.get('levels');
-    const selectedLevels: MasteryLevel[] = levelsParam
-      ? (levelsParam.split(',') as MasteryLevel[])
-      : ['Great', 'Good', 'Bad', 'Miss', 'New']; // Default levels
+    const fetchData = async () => {
+      setIsLoading(true);
+      const allCards = await loadAllCards();
+      const currentCardsMap = { ...allCards };
 
-    const unitsParam = searchParams.get('units');
-    const selectedUnitIds: string[] = unitsParam ? unitsParam.split(',') : [];
+      const allQuestionsForInit = subjects.flatMap((s) =>
+        s.units.flatMap((u) => u.questions)
+      );
+      const newCardsToSave: Card[] = [];
+      allQuestionsForInit.forEach((q) => {
+        if (!currentCardsMap[q.id]) {
+          const newCard = SpacedRepetitionScheduler.createNewCard(q.id);
+          currentCardsMap[q.id] = newCard;
+          newCardsToSave.push(newCard);
+        }
+      });
 
-    // Initialize and load cards
-    const allQuestionsForInit = subjects.flatMap((s) => s.units.flatMap((u) => u.questions));
-    const allCards = loadAllCards();
-    const newCards: Card[] = [];
-    allQuestionsForInit.forEach((q) => {
-      if (!allCards[q.id]) {
-        const newCard = SpacedRepetitionScheduler.createNewCard(q.id);
-        allCards[q.id] = newCard;
-        newCards.push(newCard);
+      if (newCardsToSave.length > 0) {
+        await saveCards(newCardsToSave);
       }
-    });
-    if (newCards.length > 0) {
-      saveCards(newCards);
-    }
-    setCards(Object.values(allCards));
+      setCards(currentCardsMap);
 
-    // Filter function based on mastery level
-    const filterByLevel = (q: Question): boolean => {
-      const card = allCards[q.id];
-      const level = card?.masteryLevel || 'New';
-      return selectedLevels.includes(level);
+      const searchParams = new URLSearchParams(location.search);
+      const levelsParam = searchParams.get("levels");
+      const selectedLevels: MasteryLevel[] = levelsParam
+        ? (levelsParam.split(",") as MasteryLevel[])
+        : ["Great", "Good", "Bad", "Miss", "New"];
+
+      const unitsParam = searchParams.get("units");
+      const selectedUnitIds: string[] = unitsParam ? unitsParam.split(",") : [];
+
+      const filterByLevel = (q: Question): boolean => {
+        const card = currentCardsMap[q.id];
+        const level = card?.masteryLevel || "New";
+        return selectedLevels.includes(level);
+      };
+
+      let questionsToShow: Question[] = [];
+      let pageTitle = "";
+      let pageDescription = "";
+
+      if (unitId === "bulk-study") {
+        if (selectedUnitIds.length === 0) {
+          setShowNoUnitsError(true);
+          setIsLoading(false);
+          return;
+        }
+        const allQuestions = subjects.flatMap((s) =>
+          s.units.flatMap((u) => u.questions.map((q) => ({ q, unitId: u.id })))
+        );
+        questionsToShow = allQuestions
+          .filter(({ q, unitId: qUnitId }) => selectedUnitIds.includes(qUnitId))
+          .map(({ q }) => q)
+          .filter(filterByLevel);
+        pageTitle = "まとめて学習";
+        pageDescription = "選択した単元の問題";
+      } else if (unitId === "review-all") {
+        const allQuestions = subjects.flatMap((s) =>
+          s.units.flatMap((u) => u.questions)
+        );
+        questionsToShow = allQuestions.filter(filterByLevel);
+        pageTitle = "まとめて学習";
+        pageDescription = "選択した習熟度の問題";
+      } else if (unitId.startsWith("review-")) {
+        const subjectId = unitId.replace("review-", "");
+        const foundSubject = subjects.find((s) => s.id === subjectId);
+        if (foundSubject) {
+          const subjectQuestions = foundSubject.units.flatMap((u) => u.questions);
+          questionsToShow = subjectQuestions.filter(filterByLevel);
+          pageTitle = `${foundSubject.name} の復習`;
+          pageDescription = "選択した習熟度の問題";
+        }
+      } else {
+        const foundUnit = subjects
+          .flatMap((s) => s.units)
+          .find((u) => u.id === unitId);
+        if (foundUnit) {
+          questionsToShow = [...foundUnit.questions]
+            .filter(filterByLevel)
+            .sort((a, b) => {
+              const cardA = allCards[a.id];
+              const cardB = allCards[b.id];
+              const needsReviewA = cardA?.needsReview ?? true;
+              const needsReviewB = cardB?.needsReview ?? true;
+              if (needsReviewA === needsReviewB) return 0;
+              return needsReviewA ? -1 : 1;
+            });
+          pageTitle = foundUnit.name;
+          pageDescription = "クイズモード";
+        }
+      }
+
+      setUnit({
+        id: unitId,
+        name: pageTitle,
+        description: pageDescription,
+        subjectId: "",
+        questions: questionsToShow,
+        dueCards: 0,
+        newCards: questionsToShow.length,
+      });
+      setQuestions(questionsToShow);
+
+      if (!unitId.startsWith("review-")) {
+        const saved = getQuizProgress(unitId);
+        if (saved > 0 && saved < questionsToShow.length) {
+          setResumePrompt(true);
+          setSavedIndex(saved);
+        }
+      }
+      setIsLoading(false);
     };
 
-    let questionsToShow: Question[] = [];
-    let pageTitle = '';
-    let pageDescription = '';
-
-    if (unitId === "bulk-study") {
-      if (selectedUnitIds.length === 0) {
-        // No units selected for bulk study, handle this case (e.g., show error or redirect)
-        console.error("No units selected for bulk study.");
-        setShowNoUnitsError(true); // Set error state
-        return;
-      }
-      const allQuestions = subjects.flatMap((s) => s.units.flatMap((u) => u.questions.map(q => ({ q, unitId: u.id }))));
-      questionsToShow = allQuestions.filter(({ q, unitId: qUnitId }) => selectedUnitIds.includes(qUnitId)).map(({ q }) => q).filter(filterByLevel);
-      pageTitle = 'まとめて学習';
-      pageDescription = '選択した単元の問題';
-    } else if (unitId === "review-all") {
-      const allQuestions = subjects.flatMap((s) => s.units.flatMap((u) => u.questions));
-      questionsToShow = allQuestions.filter(filterByLevel);
-      pageTitle = 'まとめて学習';
-      pageDescription = '選択した習熟度の問題';
-    } else if (unitId.startsWith("review-")) {
-      const subjectId = unitId.replace("review-", "");
-      const foundSubject = subjects.find((s) => s.id === subjectId);
-      if (foundSubject) {
-        const subjectQuestions = foundSubject.units.flatMap((u) => u.questions);
-        questionsToShow = subjectQuestions.filter(filterByLevel);
-        pageTitle = `${foundSubject.name} の復習`;
-        pageDescription = '選択した習熟度の問題';
-      }
-    } else {
-      const foundUnit = subjects.flatMap((s) => s.units).find((u) => u.id === unitId);
-      if (foundUnit) {
-        questionsToShow = [...foundUnit.questions]
-          .filter(filterByLevel)
-          .sort((a, b) => {
-            const cardA = allCards[a.id];
-            const cardB = allCards[b.id];
-            const needsReviewA = cardA?.needsReview ?? true;
-            const needsReviewB = cardB?.needsReview ?? true;
-            if (needsReviewA === needsReviewB) return 0;
-            return needsReviewA ? -1 : 1;
-          });
-        pageTitle = foundUnit.name;
-        pageDescription = 'クイズモード';
-      }
-    }
-
-    setUnit({
-      id: unitId,
-      name: pageTitle,
-      description: pageDescription,
-      subjectId: '', // This might need adjustment
-      questions: questionsToShow,
-      dueCards: 0,
-      newCards: questionsToShow.length,
-    });
-    setQuestions(questionsToShow);
-
-    // Disable resume prompt for review modes
-    if (!unitId.startsWith("review-")) {
-      const saved = getQuizProgress(unitId);
-      if (saved > 0 && saved < questionsToShow.length) {
-        setResumePrompt(true);
-        setSavedIndex(saved);
-      }
-    }
+    fetchData();
   }, [unitId, location.search]);
 
   useEffect(() => {
-    if (questions.length > 0 && cards.length > 0) {
-      const card = cards.find(c => c.questionId === questions[currentQuestionIndex].id);
+    if (questions.length > 0 && Object.keys(cards).length > 0) {
+      const card = cards[questions[currentQuestionIndex]?.id];
       setCurrentCard(card || null);
     }
   }, [currentQuestionIndex, questions, cards]);
+
+  const handleAnswer = async (answer: number, timeSpent: number) => {
+    const currentQuestion = questions[currentQuestionIndex];
+    const isCorrect = answer === currentQuestion.answer;
+    const grade = SpacedRepetitionScheduler.calculateGrade({ questionId: currentQuestion.id, answer, timeSpent, isCorrect, grade: 0 });
+    const userAnswer: UserAnswer = { questionId: currentQuestion.id, answer, timeSpent, isCorrect, grade };
+
+    setAnswers((prev) => [...prev, userAnswer]);
+    setShowResult(true);
+    void saveAnswerHistory(sessionId, userAnswer);
+    recordDailyAnswer(isCorrect);
+
+    const originalCard = cards[currentQuestion.id];
+    if (originalCard) {
+      let updatedCard = { ...originalCard };
+      updatedCard.total_count += 1;
+      if (isCorrect) {
+        updatedCard.correct_count += 1;
+      }
+
+      updatedCard = SpacedRepetitionScheduler.scheduleCard(updatedCard, grade);
+
+      setCards((prev) => ({ ...prev, [currentQuestion.id]: updatedCard }));
+      setCurrentCard(updatedCard);
+
+      await saveCards([updatedCard]);
+    }
+
+    saveQuizProgress(unitId!, currentQuestionIndex + 1);
+  };
+
+  const handleNext = () => {
+    const nextIndex = currentQuestionIndex + 1;
+    if (nextIndex >= questions.length) {
+      setIsComplete(true);
+      clearQuizProgress(unitId!);
+    } else {
+      setCurrentQuestionIndex(nextIndex);
+      setShowResult(false);
+      saveQuizProgress(unitId!, nextIndex);
+    }
+  };
+
+  const handleRestart = () => {
+    setCurrentQuestionIndex(0);
+    setAnswers([]);
+    setShowResult(false);
+    setIsComplete(false);
+    clearQuizProgress(unitId!);
+  };
+
+  const handleFinish = () => {
+    const score = answers.length > 0 ? Math.round((answers.filter((a) => a.isCorrect).length / answers.length) * 100) : 0;
+    clearQuizProgress(unitId!);
+    navigate(`/result?score=${score}&total=${questions.length}&correct=${answers.filter((a) => a.isCorrect).length}`);
+  };
+
+  if (isLoading) {
+    return (
+        <div className="min-h-screen gradient-learning p-4 sm:p-8">
+            <header className="container mx-auto"><Skeleton className="h-10 w-24" /></header>
+            <main className="container mx-auto mt-8">
+                <Skeleton className="w-full h-[60vh]" />
+            </main>
+        </div>
+    );
+  }
 
   if (showNoUnitsError) {
     return (
@@ -211,84 +294,9 @@ export default function Quiz() {
     );
   }
 
-  const currentQuestion = questions[currentQuestionIndex];
-  const currentStats = getQuestionStats(currentQuestion.id);
-
-  const handleAnswer = (answer: number, timeSpent: number) => {
-    const isCorrect = answer === currentQuestion.answer;
-    const userAnswer: UserAnswer = {
-      questionId: currentQuestion.id,
-      answer,
-      timeSpent,
-      isCorrect,
-      grade: SpacedRepetitionScheduler.calculateGrade({
-        questionId: currentQuestion.id,
-        answer,
-        timeSpent,
-        isCorrect,
-        grade: 0,
-      }),
-    };
-
-    setAnswers((prev) => [...prev, userAnswer]);
-    setShowResult(true);
-    void saveAnswerHistory(sessionId, userAnswer);
-    
-    // Update stats before scheduling
-    updateQuestionStats(currentQuestion.id, isCorrect);
-    const newStats = getQuestionStats(currentQuestion.id);
-
-    saveQuizProgress(unitId!, currentQuestionIndex + 1);
-
-    // Update card with spaced repetition
-    const cardIndex = cards.findIndex((c) => c.questionId === currentQuestion.id);
-    if (cardIndex !== -1 && newStats) {
-      const updatedCard = SpacedRepetitionScheduler.scheduleCard(
-        cards[cardIndex],
-        userAnswer.grade,
-        newStats
-      );
-      setCards((prev) => {
-        const newCards = [...prev];
-        newCards[cardIndex] = updatedCard;
-        saveCards([updatedCard]); // Persist inside the callback
-        return newCards;
-      });
-      setCurrentCard(updatedCard);
-    }
-  };
-
-  
-
-  const handleNext = () => {
-    const nextIndex = currentQuestionIndex + 1;
-    if (nextIndex >= questions.length) {
-      setIsComplete(true);
-      clearQuizProgress(unitId!);
-    } else {
-      setCurrentQuestionIndex(nextIndex);
-      setShowResult(false);
-      saveQuizProgress(unitId!, nextIndex);
-    }
-  };
-
-  const handleRestart = () => {
-    setCurrentQuestionIndex(0);
-    setAnswers([]);
-    setShowResult(false);
-    setIsComplete(false);
-    clearQuizProgress(unitId!);
-  };
-
-  const handleFinish = () => {
-    const score = Math.round((answers.filter(a => a.isCorrect).length / answers.length) * 100);
-    clearQuizProgress(unitId!);
-    navigate(`/result?score=${score}&total=${questions.length}&correct=${answers.filter(a => a.isCorrect).length}`);
-  };
-
   if (isComplete) {
     const correctAnswers = answers.filter(a => a.isCorrect).length;
-    const score = Math.round((correctAnswers / answers.length) * 100);
+    const score = answers.length > 0 ? Math.round((correctAnswers / answers.length) * 100) : 0;
 
     return (
       <div className="min-h-screen gradient-learning flex items-center justify-center">
@@ -313,8 +321,8 @@ export default function Quiz() {
               <div className="p-4 bg-muted/20 rounded-lg">
                 <div className="text-sm text-muted-foreground mb-2">次回復習予定</div>
                 <div className="text-sm font-medium">
-                  {SpacedRepetitionScheduler.getNextReviewDate(cards) 
-                    ? new Date(SpacedRepetitionScheduler.getNextReviewDate(cards)!).toLocaleDateString()
+                  {SpacedRepetitionScheduler.getNextReviewDate(Object.values(cards)) 
+                    ? new Date(SpacedRepetitionScheduler.getNextReviewDate(Object.values(cards))!).toLocaleDateString()
                     : "なし"
                   }
                 </div>
@@ -322,17 +330,8 @@ export default function Quiz() {
             </div>
 
             <div className="space-y-3">
-              <Button 
-                onClick={handleFinish}
-                className="w-full gradient-primary"
-              >
-                結果を詳しく見る
-              </Button>
-              <Button 
-                onClick={handleRestart}
-                variant="outline"
-                className="w-full gap-2"
-              >
+              <Button onClick={handleFinish} className="w-full gradient-primary">結果を詳しく見る</Button>
+              <Button onClick={handleRestart} variant="outline" className="w-full gap-2">
                 <RotateCcw className="h-4 w-4" />
                 もう一度挑戦
               </Button>
@@ -343,17 +342,15 @@ export default function Quiz() {
     );
   }
 
+  const currentQuestion = questions[currentQuestionIndex];
+  const lastAnswer = answers.length > 0 ? answers[answers.length - 1] : null;
+
   return (
     <div className="min-h-screen gradient-learning">
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => navigate(-1)}
-              className="gap-2"
-            >
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-2">
               <ArrowLeft className="h-4 w-4" />
               戻る
             </Button>
@@ -366,41 +363,31 @@ export default function Quiz() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <QuizCard
-          question={currentQuestion}
-          questionNumber={currentQuestionIndex + 1}
-          totalQuestions={questions.length}
-          onAnswer={handleAnswer}
-          showResult={showResult}
-          selectedAnswer={showResult ? answers[answers.length - 1]?.answer : undefined}
-          lastResult={currentStats?.lastResult}
-          masteryLevel={currentCard?.masteryLevel}
-        />
+        {currentQuestion ? (
+          <QuizCard
+            question={currentQuestion}
+            questionNumber={currentQuestionIndex + 1}
+            totalQuestions={questions.length}
+            onAnswer={handleAnswer}
+            showResult={showResult}
+            selectedAnswer={showResult ? answers[answers.length - 1]?.answer : undefined}
+            lastResult={lastAnswer?.isCorrect}
+            masteryLevel={currentCard?.masteryLevel}
+          />
+        ) : (
+          <p>問題の読み込み中...</p>
+        )}
         
         {showResult && (
           <>
-            
-
             <div className="text-center mt-8 hidden sm:block">
-              <Button
-                onClick={handleNext}
-                size="lg"
-                className="gradient-primary"
-              >
-                {currentQuestionIndex + 1 >= questions.length
-                  ? "完了"
-                  : "次の問題"}
+              <Button onClick={handleNext} size="lg" className="gradient-primary">
+                {currentQuestionIndex + 1 >= questions.length ? "完了" : "次の問題"}
               </Button>
             </div>
             <div className="sm:hidden fixed bottom-4 left-0 right-0 px-4">
-              <Button
-                onClick={handleNext}
-                size="lg"
-                className="w-full gradient-primary"
-              >
-                {currentQuestionIndex + 1 >= questions.length
-                  ? "完了"
-                  : "次の問題"}
+              <Button onClick={handleNext} size="lg" className="w-full gradient-primary">
+                {currentQuestionIndex + 1 >= questions.length ? "完了" : "次の問題"}
               </Button>
             </div>
           </>
