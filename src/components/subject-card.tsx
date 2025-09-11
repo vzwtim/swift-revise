@@ -43,11 +43,13 @@ export function SubjectCard({ subject, progressCounts, onStartLearning }: Subjec
             <BookOpen className="h-4 w-4" />
             <span>{subject.totalQuestions} 問題</span>
           </div>
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 text-xs flex-wrap">
             <span className="text-green-500 font-medium" title="Perfect">P: {progressCounts.Perfect || 0}</span>
             <span className="text-blue-500 font-medium" title="Great">G: {progressCounts.Great || 0}</span>
-            <span className="text-yellow-400 font-medium" title="Good">g: {progressCounts.Good || 0}</span>
+            <span className="text-yellow-400 font-medium" title="Good">G: {progressCounts.Good || 0}</span>
             <span className="text-orange-500 font-medium" title="Bad">B: {progressCounts.Bad || 0}</span>
+            <span className="text-red-500 font-medium" title="Miss">M: {progressCounts.Miss || 0}</span>
+            <span className="text-zinc-400 font-medium" title="New">N: {progressCounts.New || 0}</span>
           </div>
         </div>
 

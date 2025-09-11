@@ -142,6 +142,13 @@ export default function Quiz() {
     }
   }, [unitId, location.search]);
 
+  useEffect(() => {
+    if (questions.length > 0 && cards.length > 0) {
+      const card = cards.find(c => c.questionId === questions[currentQuestionIndex].id);
+      setCurrentCard(card || null);
+    }
+  }, [currentQuestionIndex, questions, cards]);
+
   if (showNoUnitsError) {
     return (
       <div className="min-h-screen flex items-center justify-center gradient-learning">
