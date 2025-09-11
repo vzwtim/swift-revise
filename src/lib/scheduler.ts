@@ -21,16 +21,34 @@ export class SpacedRepetitionScheduler {
   }
 
   static calculateMasteryLevel(
-    consecutiveCorrectAnswers: number,
+    isCorrect: boolean,
+    currentMasteryLevel: MasteryLevel,
     stats: QuestionStats
   ): MasteryLevel {
-    const totalIncorrect = stats.total - stats.correct;
-    if (totalIncorrect >= 2) return "Miss";
-    if (consecutiveCorrectAnswers >= 3) return "Perfect";
-    if (consecutiveCorrectAnswers === 2) return "Great";
-    if (consecutiveCorrectAnswers === 1) return "Good";
-    if (stats.total > 0) return "Bad";
-    return "New";
+    const levels: MasteryLevel[] = ["Miss", "Bad", "New", "Good", "Great", "Perfect"];
+    const currentIndex = levels.indexOf(currentMasteryLevel);
+
+    let newLevel: MasteryLevel;
+
+    if (isCorrect) {
+      const nextIndex = Math.min(currentIndex + 1, levels.length - 1);
+      newLevel = levels[nextIndex];
+    } else {
+      const nextIndex = Math.max(currentIndex - 1, 0);
+      newLevel = levels[nextIndex];
+    }
+
+    if (currentMasteryLevel === "New") {
+      if (isCorrect) {
+        newLevel = "Good";
+      } else {
+        newLevel = "Bad";
+      }
+    }
+
+    
+
+    return newLevel;
   }
 
   static scheduleCard(card: Card, grade: 0 | 1 | 2, stats: QuestionStats): Card {
@@ -50,7 +68,8 @@ export class SpacedRepetitionScheduler {
 
     // Update mastery level
     newCard.masteryLevel = this.calculateMasteryLevel(
-      newCard.consecutiveCorrectAnswers,
+      grade > 0, // isCorrect
+      card.masteryLevel, // currentMasteryLevel
       stats
     );
 

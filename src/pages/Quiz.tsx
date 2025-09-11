@@ -85,8 +85,8 @@ export default function Quiz() {
         setShowNoUnitsError(true); // Set error state
         return;
       }
-      const allQuestions = subjects.flatMap((s) => s.units.flatMap((u) => u.questions));
-      questionsToShow = allQuestions.filter(q => selectedUnitIds.includes(q.unit)).filter(filterByLevel);
+      const allQuestions = subjects.flatMap((s) => s.units.flatMap((u) => u.questions.map(q => ({ q, unitId: u.id }))));
+      questionsToShow = allQuestions.filter(({ q, unitId: qUnitId }) => selectedUnitIds.includes(qUnitId)).map(({ q }) => q).filter(filterByLevel);
       pageTitle = 'まとめて学習';
       pageDescription = '選択した単元の問題';
     } else if (unitId === "review-all") {
@@ -251,29 +251,7 @@ export default function Quiz() {
     }
   };
 
-  const handleToggleReview = () => {
-    const cardIndex = cards.findIndex((c) => c.questionId === currentQuestion.id);
-    if (cardIndex === -1) return;
-
-    const updatedCards = [...cards];
-    const targetCard = updatedCards[cardIndex];
-
-    // Toggle the review status
-    const newNeedsReview = !targetCard.needsReview;
-    const updatedCard = {
-        ...targetCard,
-        needsReview: newNeedsReview,
-        // If manually set to review, reset consecutive correct answers
-        consecutiveCorrectAnswers: newNeedsReview
-          ? 0
-          : targetCard.consecutiveCorrectAnswers,
-      };
-    updatedCards[cardIndex] = updatedCard;
-
-    setCards(updatedCards);
-    saveCards([updatedCard]); // Persist the change
-    setCurrentCard(updatedCard);
-  };
+  
 
   const handleNext = () => {
     const nextIndex = currentQuestionIndex + 1;
@@ -394,33 +372,7 @@ export default function Quiz() {
         
         {showResult && (
           <>
-            <div className="max-w-2xl mx-auto mt-6 p-4 border rounded-lg bg-background/50">
-              <div className="flex items-center space-x-3">
-                <Checkbox
-                  id="force-review"
-                  checked={
-                    answers[answers.length - 1]?.isCorrect
-                      ? currentCard?.needsReview
-                      : true
-                  }
-                  onCheckedChange={handleToggleReview}
-                  disabled={!answers[answers.length - 1]?.isCorrect}
-                />
-                <Label
-                  htmlFor="force-review"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  この問題を復習リストに残す
-                </Label>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2 pl-1">
-                {answers[answers.length - 1]?.isCorrect
-                  ? currentCard?.needsReview
-                    ? "チェックを外すと、次回からこの問題は出題されにくくなります。"
-                    : "3回連続正解したため自動で復習対象から外れました。再度学習したい場合はチェックを入れてください。"
-                  : "不正解だったため、この問題は自動的に復習リストに残ります。"}
-              </p>
-            </div>
+            
 
             <div className="text-center mt-8 hidden sm:block">
               <Button

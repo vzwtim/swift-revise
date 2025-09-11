@@ -122,11 +122,6 @@ export function QuizCard({
           <CardTitle className="text-lg leading-relaxed mt-4">
             {question.question}
           </CardTitle>
-          {lastResult !== undefined && (
-            <p className="text-sm text-muted-foreground mt-2">
-              前回の結果: {lastResult ? "正解" : "不正解"}
-            </p>
-          )}
         </CardHeader>
 
         <CardContent className="pb-32 md:pb-6">
