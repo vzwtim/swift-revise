@@ -27,13 +27,9 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/" element={<Index />} />
+            <Route path="/subjects/:id" element={<Subject />} />
+            <Route path="/quiz/:unitId" element={<Quiz />} />
             <Route path="/result" element={<Result />} />
-            
-            {/* Protected Routes */}
-            <Route element={<ProtectedRoute />}>
-              <Route path="/subjects/:id" element={<Subject />} />
-              <Route path="/quiz/:unitId" element={<Quiz />} />
-            </Route>
 
             <Route path="*" element={<NotFound />} />
           </Routes>
