@@ -1,4 +1,4 @@
-import { createClient } } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
 Deno.serve(async (req) => {
@@ -8,10 +8,15 @@ Deno.serve(async (req) => {
 
   try {
     console.log('Function started.');
+    // Authorizationヘッダーを取得。存在しない場合はundefined
+    const authHeader = req.headers.get('Authorization');
+
+    // Supabaseクライアントを初期化
+    // Authorizationヘッダーが存在しない場合は、匿名アクセスとして初期化
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+      { global: { headers: { Authorization: authHeader || '' } } } // authHeaderがない場合は空文字列を渡す
     );
     console.log('Supabase client initialized.');
 
@@ -31,15 +36,12 @@ Deno.serve(async (req) => {
     }
     console.log('Query executed successfully. Raw data:', JSON.stringify(data));
 
-    // dataがnullまたはundefinedの場合に備えて空配列をデフォルトにする
     const safeData = data || [];
 
-    // ユーザーごとに回答数を集計
     const userCounts = safeData.reduce((acc, log) => {
       if (log.user_id) {
         acc[log.user_id] = {
           count: (acc[log.user_id]?.count || 0) + 1,
-          // profilesがnullの場合に備えてフォールバックを追加
           profile: log.profiles || { username: '名無しさん', avatar_url: null }
         };
       }
@@ -47,7 +49,6 @@ Deno.serve(async (req) => {
     }, {});
     console.log('User counts generated. UserCounts:', JSON.stringify(userCounts));
 
-    // ランキング形式に変換し、上位10件を取得
     const rankedUsers = Object.entries(userCounts)
       .map(([userId, { count, profile }]) => ({
         userId,

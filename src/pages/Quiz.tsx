@@ -3,12 +3,13 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 
 import { QuizCard } from "@/components/quiz-card";
 import { Button } from "@/components/ui/button";
-import { subjects } from "@/data/questions";
+
 import { SpacedRepetitionScheduler } from "@/lib/scheduler";
-import { UserAnswer, Card, Question, Unit, MasteryLevel } from "@/lib/types";
+import { UserAnswer, Card, Question, Unit } from "@/lib/types";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { saveAnswerHistory } from "@/lib/answer-history";
-import { recordDailyAnswer } from "@/lib/answer-stats";
+import { initializeCards, buildQuizQuestions } from "@/lib/quiz-builder";
+
 import {
   getQuizProgress,
   saveQuizProgress,
@@ -44,94 +45,26 @@ export default function Quiz() {
 
     const fetchData = async () => {
       setIsLoading(true);
-      const allCards = await loadAllCards();
-      const currentCardsMap = { ...allCards };
 
-      const allQuestionsForInit = subjects.flatMap((s) =>
-        s.units.flatMap((u) => u.questions)
-      );
-      const newCardsToSave: Card[] = [];
-      allQuestionsForInit.forEach((q) => {
-        if (!currentCardsMap[q.id]) {
-          const newCard = SpacedRepetitionScheduler.createNewCard(q.id);
-          currentCardsMap[q.id] = newCard;
-          newCardsToSave.push(newCard);
-        }
-      });
+      const allCards = await loadAllCards();
+      const { currentCardsMap, newCardsToSave } = await initializeCards(allCards);
 
       if (newCardsToSave.length > 0) {
         await saveCards(newCardsToSave);
       }
       setCards(currentCardsMap);
 
-      const searchParams = new URLSearchParams(location.search);
-      const levelsParam = searchParams.get("levels");
-      const selectedLevels: MasteryLevel[] = levelsParam
-        ? (levelsParam.split(",") as MasteryLevel[])
-        : ["Great", "Good", "Bad", "Miss", "New"];
+      const {
+        questionsToShow,
+        pageTitle,
+        pageDescription,
+        showNoUnitsError,
+      } = buildQuizQuestions(unitId, location.search, currentCardsMap);
 
-      const unitsParam = searchParams.get("units");
-      const selectedUnitIds: string[] = unitsParam ? unitsParam.split(",") : [];
-
-      const filterByLevel = (q: Question): boolean => {
-        const card = currentCardsMap[q.id];
-        const level = card?.masteryLevel || "New";
-        return selectedLevels.includes(level);
-      };
-
-      let questionsToShow: Question[] = [];
-      let pageTitle = "";
-      let pageDescription = "";
-
-      if (unitId === "bulk-study") {
-        if (selectedUnitIds.length === 0) {
-          setShowNoUnitsError(true);
-          setIsLoading(false);
-          return;
-        }
-        const allQuestions = subjects.flatMap((s) =>
-          s.units.flatMap((u) => u.questions.map((q) => ({ q, unitId: u.id })))
-        );
-        questionsToShow = allQuestions
-          .filter(({ q, unitId: qUnitId }) => selectedUnitIds.includes(qUnitId))
-          .map(({ q }) => q)
-          .filter(filterByLevel);
-        pageTitle = "まとめて学習";
-        pageDescription = "選択した単元の問題";
-      } else if (unitId === "review-all") {
-        const allQuestions = subjects.flatMap((s) =>
-          s.units.flatMap((u) => u.questions)
-        );
-        questionsToShow = allQuestions.filter(filterByLevel);
-        pageTitle = "まとめて学習";
-        pageDescription = "選択した習熟度の問題";
-      } else if (unitId.startsWith("review-")) {
-        const subjectId = unitId.replace("review-", "");
-        const foundSubject = subjects.find((s) => s.id === subjectId);
-        if (foundSubject) {
-          const subjectQuestions = foundSubject.units.flatMap((u) => u.questions);
-          questionsToShow = subjectQuestions.filter(filterByLevel);
-          pageTitle = `${foundSubject.name} の復習`;
-          pageDescription = "選択した習熟度の問題";
-        }
-      } else {
-        const foundUnit = subjects
-          .flatMap((s) => s.units)
-          .find((u) => u.id === unitId);
-        if (foundUnit) {
-          questionsToShow = [...foundUnit.questions]
-            .filter(filterByLevel)
-            .sort((a, b) => {
-              const cardA = allCards[a.id];
-              const cardB = allCards[b.id];
-              const needsReviewA = cardA?.needsReview ?? true;
-              const needsReviewB = cardB?.needsReview ?? true;
-              if (needsReviewA === needsReviewB) return 0;
-              return needsReviewA ? -1 : 1;
-            });
-          pageTitle = foundUnit.name;
-          pageDescription = "クイズモード";
-        }
+      if (showNoUnitsError) {
+        setShowNoUnitsError(true);
+        setIsLoading(false);
+        return;
       }
 
       setUnit({

@@ -1,4 +1,4 @@
-import { Card } from "./types";
+import { Card, MasteryLevel } from "./types";
 import { supabase } from "@/integrations/supabase/client";
 import { PostgrestError } from "@supabase/supabase-js";
 
@@ -50,7 +50,7 @@ function mapFromSupabase(dbCard: SupabaseCard): Card {
     lastReviewed: dbCard.last_reviewed ? new Date(dbCard.last_reviewed).getTime() : undefined,
     consecutiveCorrectAnswers: dbCard.consecutive_correct_answers,
     needsReview: dbCard.needs_review,
-    masteryLevel: dbCard.mastery_level as any, // Assuming the string matches MasteryLevel type
+    masteryLevel: dbCard.mastery_level as MasteryLevel, // Assuming the string matches MasteryLevel type
     correct_count: dbCard.correct_count,
     total_count: dbCard.total_count,
   };
@@ -82,8 +82,8 @@ export async function loadAllCards(): Promise<{ [questionId: string]: Card }> {
   }
 
   const cardsMap: { [questionId: string]: Card } = {};
-  data.forEach(dbCard => {
-    const card = mapFromSupabase(dbCard as any);
+  data.forEach((dbCard: SupabaseCard) => {
+    const card = mapFromSupabase(dbCard);
     cardsMap[card.questionId] = card;
   });
 
@@ -98,7 +98,7 @@ export async function loadAllCards(): Promise<{ [questionId: string]: Card }> {
 export async function saveCards(cards: Card[]): Promise<{ error: PostgrestError | null }> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return { error: new Error("User not authenticated") as any };
+    return { error: { message: "User not authenticated", details: "", hint: "", code: "401" } };
   }
   if (cards.length === 0) {
     return { error: null };
