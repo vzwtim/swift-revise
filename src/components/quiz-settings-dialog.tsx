@@ -19,13 +19,13 @@ interface QuizSettingsDialogProps {
   targetId: string; // unitId or subjectId (e.g., 'unit-1', 'review-all', 'review-subject-1')
   title: string;
   description: string;
-  selectedUnitIds: string[];
+  selectedUnitIds?: string[];
 }
 
 const ALL_LEVELS: MasteryLevel[] = ['Perfect', 'Great', 'Good', 'Bad', 'Miss', 'New'];
 const DEFAULT_LEVELS: MasteryLevel[] = ['Great', 'Good', 'Bad', 'Miss', 'New'];
 
-export function QuizSettingsDialog({ open, onOpenChange, targetId, title, description, selectedUnitIds }: QuizSettingsDialogProps) {
+export function QuizSettingsDialog({ open, onOpenChange, targetId, title, description, selectedUnitIds = [] }: QuizSettingsDialogProps) {
   const navigate = useNavigate();
   const [selectedLevels, setSelectedLevels] = useState<MasteryLevel[]>(DEFAULT_LEVELS);
 

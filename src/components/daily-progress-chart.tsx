@@ -11,8 +11,11 @@ export function DailyProgressChart({ target }: Props) {
   const [data, setData] = useState<{ date: string; correct: number; incorrect: number }[]>([]);
 
   useEffect(() => {
-    // 過去30日間のデータを取得
-    setData(getDailyAnswerCounts(30));
+    const fetchData = async () => {
+      const dailyCounts = await getDailyAnswerCounts(30);
+      setData(dailyCounts);
+    };
+    fetchData();
   }, []);
 
   return (
