@@ -70,6 +70,8 @@ export default function Subject() {
     subjectQuestionIds.has(c.questionId)
   );
 
+  const MASTERY_ORDER: MasteryLevel[] = ['Perfect', 'Great', 'Good', 'Bad', 'Miss', 'New'];
+
   const progressCounts: Partial<Record<MasteryLevel, number>> = {};
   MASTERY_ORDER.forEach(level => {
     progressCounts[level] = subjectCards.filter(c => c.masteryLevel === level).length;
@@ -83,7 +85,6 @@ export default function Subject() {
     Miss: { label: "Miss", color: "#ef4444" },
     New: { label: "New", color: "#a1a1aa" },
   };
-  const MASTERY_ORDER: MasteryLevel[] = ['Perfect', 'Great', 'Good', 'Bad', 'Miss', 'New'];
 
   const handleStartQuiz = (unitId: string) => {
     const unit = subject?.units.find((u) => u.id === unitId);
