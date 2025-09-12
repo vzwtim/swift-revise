@@ -34,16 +34,14 @@ export class SpacedRepetitionScheduler {
     if (isCorrect) {
       const nextIndex = Math.min(currentIndex + 1, levels.length - 1);
       newLevel = levels[nextIndex];
-    } else {
-      const nextIndex = Math.max(currentIndex - 1, 0);
-      newLevel = levels[nextIndex];
-    }
-
-    if (currentMasteryLevel === "New") {
-      if (isCorrect) {
-        newLevel = "Good";
+    } else { // isCorrect is false (不正解の場合)
+      if (currentMasteryLevel === "Good") {
+        newLevel = "Bad"; // Goodから不正解の場合、Badにする
+      } else if (currentMasteryLevel === "New") {
+        newLevel = "Bad"; // Newから不正解の場合、Badにする
       } else {
-        newLevel = "Bad";
+        const nextIndex = Math.max(currentIndex - 1, 0);
+        newLevel = levels[nextIndex];
       }
     }
 

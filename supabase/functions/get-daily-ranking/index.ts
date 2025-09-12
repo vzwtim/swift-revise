@@ -7,17 +7,20 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log('Function started.'); // 追加
     // 環境変数からSupabaseクライアントを初期化
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
     );
+    console.log('Supabase client initialized.'); // 追加
 
     // 今日の開始時刻（UTC）を取得
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
     const todayISO = today.toISOString();
+    console.log('Today ISO:', todayISO); // 追加
 
     // answer_logsテーブルから今日の回答をユーザー情報と共に取得
     const { data, error } = await supabaseClient
@@ -25,7 +28,11 @@ Deno.serve(async (req) => {
       .select('user_id, profiles(username, avatar_url)')
       .gte('created_at', todayISO);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase query error:', error); // 追加
+      throw error;
+    }
+    console.log('Query executed successfully. Data length:', data?.length); // 追加
 
     // ユーザーごとに回答数を集計
     const userCounts = data.reduce((acc, log) => {
@@ -37,6 +44,7 @@ Deno.serve(async (req) => {
       }
       return acc;
     }, {});
+    console.log('User counts generated.'); // 追加
 
     // ランキング形式に変換し、上位10件を取得
     const rankedUsers = Object.entries(userCounts)
@@ -48,12 +56,14 @@ Deno.serve(async (req) => {
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
+    console.log('Ranking generated.'); // 追加
 
     return new Response(JSON.stringify(rankedUsers), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
   } catch (error) {
+    console.error('Function caught an error:', error.message); // 追加
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,

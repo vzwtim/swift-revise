@@ -174,7 +174,6 @@ export default function Quiz() {
     setAnswers((prev) => [...prev, userAnswer]);
     setShowResult(true);
     void saveAnswerHistory(sessionId, userAnswer);
-    recordDailyAnswer(isCorrect);
 
     const originalCard = cards[currentQuestion.id];
     if (originalCard) {

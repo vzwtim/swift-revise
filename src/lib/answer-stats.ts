@@ -1,43 +1,105 @@
-// import { QuestionStats } from "./types";
+import { supabase } from "@/integrations/supabase/client";
 
-const DAILY_KEY = 'dailyAnswerCounts';
-const TARGET_KEY = 'dailyTargetCount';
+// recordDailyAnswer は不要になるため削除
 
-type DailyCount = { correct: number; incorrect: number };
+export async function getDailyAnswerCounts(days = 7): Promise<{ date: string; correct: number; incorrect: number }[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return [];
+  }
 
-function loadDailyCounts(): Record<string, DailyCount> {
-  if (typeof window === 'undefined') return {};
-  try {
-    const raw = window.localStorage.getItem(DAILY_KEY);
-    const data = raw ? JSON.parse(raw) : {};
+  const result: { date: string; correct: number; incorrect: number }[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // 今日の0時に設定
 
-    if (data && Object.values(data).some(v => typeof v === 'number')) {
-      console.warn('Old daily count data format detected and cleared.');
-      window.localStorage.removeItem(DAILY_KEY);
-      return {};
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const startOfDay = d.toISOString();
+
+    const nextDay = new Date(d);
+    nextDay.setDate(d.getDate() + 1);
+    const endOfDay = nextDay.toISOString();
+
+    const { count: correctCount, error: correctError } = await supabase
+      .from('answer_logs')
+      .select('id', { count: 'exact' })
+      .eq('user_id', user.id)
+      .eq('is_correct', true)
+      .gte('created_at', startOfDay)
+      .lt('created_at', endOfDay);
+
+    const { count: incorrectCount, error: incorrectError } = await supabase
+      .from('answer_logs')
+      .select('id', { count: 'exact' })
+      .eq('user_id', user.id)
+      .eq('is_correct', false)
+      .gte('created_at', startOfDay)
+      .lt('created_at', endOfDay);
+
+    if (correctError || incorrectError) {
+      console.error('Error fetching daily answer counts:', correctError || incorrectError);
+      // エラー時は0として処理を続行
     }
 
-    return data;
-  } catch (error) {
-    console.error('Error loading daily counts, clearing data:', error);
-    window.localStorage.removeItem(DAILY_KEY);
-    return {};
+    const label = `${d.getMonth() + 1}/${d.getDate()}`;
+    result.push({
+      date: label,
+      correct: correctCount || 0,
+      incorrect: incorrectCount || 0
+    });
   }
+  return result;
 }
 
-function saveDailyCounts(counts: Record<string, DailyCount>): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(DAILY_KEY, JSON.stringify(counts));
-  } catch {
-    // ignore write errors
+export async function getMonthlyAnswerCounts(year: number, month: number): Promise<{ date: string; count: number }[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return [];
   }
+
+  const result: { date: string; count: number }[] = [];
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const d = new Date(year, month, day);
+    d.setHours(0, 0, 0, 0); // その日の0時に設定
+    const startOfDay = d.toISOString();
+
+    const nextDay = new Date(d);
+    nextDay.setDate(d.getDate() + 1);
+    const endOfDay = nextDay.toISOString();
+
+    const { count, error } = await supabase
+      .from('answer_logs')
+      .select('id', { count: 'exact' })
+      .eq('user_id', user.id)
+      .gte('created_at', startOfDay)
+      .lt('created_at', endOfDay);
+
+    if (error) {
+      console.error('Error fetching monthly answer counts:', error);
+      // エラー時は0として処理を続行
+    }
+
+    const label = `${month + 1}/${day}`;
+    result.push({ date: label, count: count || 0 });
+  }
+  return result;
 }
+
+// getDailyTarget と setDailyTarget は、日々の回答数とは直接関係ないため、
+// 必要であれば別のファイルに移動するか、このファイルに残すか検討。
+// 今回の要望の範囲外なので、一旦そのまま残す。
+// ただし、localStorageへの依存は解消する必要がある。
+// 現状ではlocalStorageに依存しているので、このままでは動かない。
+// ユーザーの要望は「毎日の回答数も、各アカウントの保持する回答履歴から計算するように」なので、
+// getDailyTargetとsetDailyTargetは今回の修正範囲外と判断し、変更しない。
 
 function loadTarget(): number {
   if (typeof window === 'undefined') return 0;
   try {
-    const raw = window.localStorage.getItem(TARGET_KEY);
+    const raw = window.localStorage.getItem("dailyTargetCount");
     return raw ? Number(raw) : 0;
   } catch {
     return 0;
@@ -47,54 +109,10 @@ function loadTarget(): number {
 function saveTarget(target: number): void {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(TARGET_KEY, String(target));
+    window.localStorage.setItem("dailyTargetCount", String(target));
   } catch {
     // ignore write errors
   }
-}
-
-export function recordDailyAnswer(isCorrect: boolean): void {
-  const counts = loadDailyCounts();
-  const today = new Date().toISOString().slice(0, 10);
-  const todaysCount = counts[today] || { correct: 0, incorrect: 0 };
-  if (isCorrect) {
-    todaysCount.correct++;
-  } else {
-    todaysCount.incorrect++;
-  }
-  counts[today] = todaysCount;
-  saveDailyCounts(counts);
-}
-
-
-export function getDailyAnswerCounts(days = 7): { date: string; correct: number; incorrect: number }[] {
-  if (typeof window === 'undefined') return [];
-  const counts = loadDailyCounts();
-  const result: { date: string; correct: number; incorrect: number }[] = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
-    const label = `${d.getMonth() + 1}/${d.getDate()}`;
-    const count = counts[key] || { correct: 0, incorrect: 0 };
-    result.push({ date: label, correct: count.correct, incorrect: count.incorrect });
-  }
-  return result;
-}
-
-export function getMonthlyAnswerCounts(year: number, month: number): { date: string; count: number }[] {
-  if (typeof window === 'undefined') return [];
-  const counts = loadDailyCounts();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const result: { date: string; count: number }[] = [];
-  for (let day = 1; day <= daysInMonth; day++) {
-    const d = new Date(year, month, day);
-    const key = d.toISOString().slice(0, 10);
-    const label = `${month + 1}/${day}`;
-    const count = counts[key] as any;
-    result.push({ date: label, count: (count?.correct || 0) + (count?.incorrect || 0) });
-  }
-  return result;
 }
 
 export function getDailyTarget(): number {
