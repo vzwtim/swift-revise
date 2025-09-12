@@ -1,7 +1,7 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
-Deno.serve(async (req: Request) => { // ← req に型を付与
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -20,7 +20,7 @@ Deno.serve(async (req: Request) => { // ← req に型を付与
     const todayISO = today.toISOString();
     console.log('Today ISO:', todayISO);
 
-    const { data, error }: { data: any[] | null; error: Error | null } = await supabaseClient
+    const { data, error } = await supabaseClient
       .from('answer_logs')
       .select('user_id, profiles(username, avatar_url)')
       .gte('created_at', todayISO);
@@ -31,23 +31,29 @@ Deno.serve(async (req: Request) => { // ← req に型を付与
     }
     console.log('Query executed successfully. Raw data:', JSON.stringify(data));
 
-    const userCounts = (data ?? []).reduce((acc: Record<string, { count: number; profile: any }>, log: any) => {
+    // dataがnullまたはundefinedの場合に備えて空配列をデフォルトにする
+    const safeData = data || [];
+
+    // ユーザーごとに回答数を集計
+    const userCounts = safeData.reduce((acc, log) => {
       if (log.user_id) {
         acc[log.user_id] = {
           count: (acc[log.user_id]?.count || 0) + 1,
-          profile: log.profiles
+          // profilesがnullの場合に備えてフォールバックを追加
+          profile: log.profiles || { username: '名無しさん', avatar_url: null }
         };
       }
       return acc;
     }, {});
     console.log('User counts generated. UserCounts:', JSON.stringify(userCounts));
 
+    // ランキング形式に変換し、上位10件を取得
     const rankedUsers = Object.entries(userCounts)
       .map(([userId, { count, profile }]) => ({
         userId,
         count,
         username: profile?.username || '名無しさん',
-        avatar_url: profile?.avatar_url
+        avatar_url: profile?.avatar_url || null
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
@@ -57,19 +63,11 @@ Deno.serve(async (req: Request) => { // ← req に型を付与
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
-  } catch (error: unknown) { // ← error に型を付与
-    if (error instanceof Error) {
-      console.error('Function caught an error:', error.message);
-      return new Response(JSON.stringify({ error: error.message }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      });
-    } else {
-      console.error('Unknown error:', error);
-      return new Response(JSON.stringify({ error: 'Unknown error occurred' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      });
-    }
+  } catch (error) {
+    console.error('Function caught an error:', error.message);
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 400,
+    });
   }
 });

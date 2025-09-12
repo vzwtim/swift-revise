@@ -28,7 +28,7 @@ export function RankingCard() {
         setError(error.message);
         console.error('Error fetching ranking:', error);
       } else {
-        setRanking(data);
+        setRanking(data || []);
       }
       setLoading(false);
     };
