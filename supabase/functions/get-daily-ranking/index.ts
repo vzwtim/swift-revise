@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => { // ← req に型を付与
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     const todayISO = today.toISOString();
     console.log('Today ISO:', todayISO);
 
-    const { data, error } = await supabaseClient
+    const { data, error }: { data: any[] | null; error: Error | null } = await supabaseClient
       .from('answer_logs')
       .select('user_id, profiles(username, avatar_url)')
       .gte('created_at', todayISO);
@@ -29,21 +29,19 @@ Deno.serve(async (req) => {
       console.error('Supabase query error:', error);
       throw error;
     }
-    console.log('Query executed successfully. Raw data:', JSON.stringify(data)); // 追加: Raw dataの内容を確認
+    console.log('Query executed successfully. Raw data:', JSON.stringify(data));
 
-    // ユーザーごとに回答数を集計
-    const userCounts = (data || []).reduce((acc, log) => { // dataがnull/undefinedの場合に備えて[]を追加
+    const userCounts = (data ?? []).reduce((acc: Record<string, { count: number; profile: any }>, log: any) => {
       if (log.user_id) {
         acc[log.user_id] = {
           count: (acc[log.user_id]?.count || 0) + 1,
-          profile: log.profiles // profilesがnullの場合もそのまま保持
+          profile: log.profiles
         };
       }
       return acc;
     }, {});
-    console.log('User counts generated. UserCounts:', JSON.stringify(userCounts)); // 追加: userCountsの内容を確認
+    console.log('User counts generated. UserCounts:', JSON.stringify(userCounts));
 
-    // ランキング形式に変換し、上位10件を取得
     const rankedUsers = Object.entries(userCounts)
       .map(([userId, { count, profile }]) => ({
         userId,
@@ -59,11 +57,19 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
-  } catch (error) {
-    console.error('Function caught an error:', error.message);
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
-    });
+  } catch (error: unknown) { // ← error に型を付与
+    if (error instanceof Error) {
+      console.error('Function caught an error:', error.message);
+      return new Response(JSON.stringify({ error: error.message }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      });
+    } else {
+      console.error('Unknown error:', error);
+      return new Response(JSON.stringify({ error: 'Unknown error occurred' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+      });
+    }
   }
 });
