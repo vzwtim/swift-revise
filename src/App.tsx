@@ -14,6 +14,9 @@ import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage"; // Import AuthPage
 import Profile from "./pages/Profile";
 import DailyChallenge from "./pages/DailyChallenge";
+import { ForumPage } from "./pages/ForumPage";
+import { NewPostPage } from "./pages/NewPostPage";
+import { PostDetailPage } from "./pages/PostDetailPage";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
 
@@ -33,10 +36,13 @@ const App = () => (
             <Route path="/quiz/:unitId" element={<Quiz />} />
             <Route path="/daily-challenge" element={<DailyChallenge />} />
             <Route path="/result" element={<Result />} />
+            <Route path="/forum" element={<ForumPage />} />
+            <Route path="/posts/:postId" element={<PostDetailPage />} />
 
             {/* Protected Routes */}
             <Route element={<ProtectedRoute />}>
               <Route path="/profile" element={<Profile />} />
+              <Route path="/forum/new" element={<NewPostPage />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />

@@ -91,7 +91,7 @@ export function RankingCard() {
     const getScoreLabel = (user: RankedUser) => {
       switch (activeTab) {
         case 'dailyChallenge':
-          return `${user.score}点 / ${user.time_taken.toFixed(2)}秒`;
+          return `${user.score}点 / ${user.time_taken}秒`;
         case 'dailyStudy':
         case 'weeklyStudy':
           return `${user.count}問`;
