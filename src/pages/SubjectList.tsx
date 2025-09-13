@@ -48,7 +48,9 @@ export default function SubjectList() {
 
     const fetchData = async () => {
       setIsLoading(true);
-      const loadedCards = await loadAllCards();
+      // 問題の切り分けのため、一時的にカード読み込みを無効化
+      console.log("カード読み込みをスキップします。");
+      const loadedCards = {};
       setCards(loadedCards);
 
       if (user) {
