@@ -1,7 +1,7 @@
 import { SubjectCard } from "@/components/subject-card";
 import { RankingCard } from "@/components/ranking-card";
 import { subjects } from "@/data/questions";
-import { GraduationCap, BarChart3, RefreshCw, BookOpen, LogIn, LogOut, User, CalendarCheck } from "lucide-react";
+import { GraduationCap, BarChart3, RefreshCw, BookOpen, LogIn, LogOut, User, CalendarCheck, MessageSquare } from "lucide-react";
 import { DailyProgressChart } from "@/components/daily-progress-chart";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -142,6 +142,10 @@ export default function SubjectList() {
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/forum')} className="cursor-pointer">
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    <span>掲示板</span>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
                     <span>プロフィール編集</span>
