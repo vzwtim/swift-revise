@@ -37,16 +37,23 @@ Deno.serve(async (req)=>{
       });
     }
 
-    // 複数のユーザー統計情報を一括で取得
-    const { data: statsData, error: statsError } = await supabaseClient.rpc('get_user_stats_for_ranking', { p_user_ids: userIds });
-    if (statsError) throw statsError;
+    // 複数のユーザー統計情報をユーザーごとに取得
+    const statsPromises = userIds.map(id => 
+      supabaseClient.rpc('get_user_stats', { p_user_id: id }).single()
+    );
+    const statsResults = await Promise.all(statsPromises);
 
     // プロフィール情報とフォールバック名を一括で取得
     const { data: profilesData, error: profilesError } = await supabaseClient.rpc('get_profiles_with_fallback_name', { p_user_ids: userIds });
     if (profilesError) throw profilesError;
 
     // データを処理しやすいようにMapに変換
-    const statsMap = new Map(statsData.map(stat => [stat.user_id, stat]));
+    const statsMap = new Map();
+    statsResults.forEach((result, index) => {
+      if (result.data) {
+        statsMap.set(userIds[index], result.data);
+      }
+    });
     const profilesMap = new Map(profilesData.map(profile => [profile.id, profile])); // id をキーにする
 
     const rankedUsers = data.map((result) => {
