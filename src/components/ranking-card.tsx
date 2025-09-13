@@ -120,7 +120,7 @@ export function RankingCard() {
             const rankRingClass = [
               'ring-yellow-400', // 1位: 金
               'ring-slate-400', // 2位: 銀
-              'ring-orange-500'  // 3位: 銅
+              'ring-orange-800'  // 3位: 銅
             ][index];
 
             return (
