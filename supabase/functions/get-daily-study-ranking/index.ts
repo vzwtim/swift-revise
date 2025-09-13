@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
       return acc;
     }, {});
 
-    // 5. 統計情報をユーザーごとに取得 (既存の get_user_stats を使用)
+    // 5. 統計情報をユーザーごとに取得
     const statsPromises = userIds.map(id => 
       sb.rpc('get_user_stats', { p_user_id: id }).single()
     );

@@ -8,14 +8,13 @@ Deno.serve(async (req)=>{
   }
   try {
     const supabaseClient = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
-    // JSTでの「今日」の開始時刻を計算するロジックは同じ
     const now = new Date();
     const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
     jst.setHours(0, 0, 0, 0);
     const todayStartISO = new Date(jst.getTime() - 9 * 60 * 60 * 1000).toISOString();
-    // 【修正点①】RPCを使って、作成したDB関数を呼び出す
+
     const { data, error } = await supabaseClient.rpc('get_daily_ranking_unique_users', {
-      start_time: todayStartISO // SQL関数に引数を渡す
+      start_time: todayStartISO
     });
     if (error) {
       throw error;
@@ -37,20 +36,17 @@ Deno.serve(async (req)=>{
       });
     }
 
-    // プロフィール情報を取得
     const { data: profilesData, error: profilesError } = await supabaseClient
       .from('profiles')
       .select('id, username, avatar_url, bio, department, acquired_qualifications')
       .in('id', userIds);
     if (profilesError) throw profilesError;
 
-    // 統計情報をユーザーごとに取得
     const statsPromises = userIds.map(id => 
       supabaseClient.rpc('get_user_stats', { p_user_id: id }).single()
     );
     const statsResults = await Promise.all(statsPromises);
 
-    // データを処理しやすいようにMapに変換
     const profilesMap = new Map(profilesData.map(profile => [profile.id, profile]));
     const statsMap = new Map();
     statsResults.forEach((result, index) => {
@@ -67,7 +63,7 @@ Deno.serve(async (req)=>{
         userId: result.user_id,
         score: result.score,
         time_taken: result.time_taken,
-        username: profile.username || '名無しさん', // resultのusernameは使わない
+        username: profile.username || '名無しさん',
         avatar_url: profile.avatar_url || null,
         bio: profile.bio,
         department: profile.department,
@@ -76,6 +72,7 @@ Deno.serve(async (req)=>{
         correct_answers: stats.correct_answers,
       };
     });
+
     return new Response(JSON.stringify(rankedUsers), {
       headers: {
         ...corsHeaders,

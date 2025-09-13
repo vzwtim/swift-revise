@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
   });
 
   try {
-    const sb = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''); // ★ 認証方法を修正
+    const sb = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
 
     // JSTの今週月曜0時 → DBはUTCなので補正してISOに
     const now = new Date();
@@ -18,17 +18,16 @@ Deno.serve(async (req) => {
     mondayJST.setHours(0, 0, 0, 0);
     const fromISO = new Date(mondayJST.getTime() - 9 * 60 * 60 * 1000).toISOString();
 
-    // ★ 対象テーブルを 'answer_logs' に修正
     const { data: logs, error: logsErr } = await sb.from('answer_logs').select('user_id, created_at').gte('created_at', fromISO);
 
     if (logsErr) throw logsErr;
 
-    // 以下、集計とレスポンス形成のロジックは daily と同じ
-    const countsMap = {};
-    for (const r of logs || []) {
-      if (!r.user_id) continue;
-      countsMap[r.user_id] = (countsMap[r.user_id] || 0) + 1;
-    }
+    const countsMap = (logs || []).reduce((acc, r) => {
+      if (r.user_id) {
+        acc[r.user_id] = (acc[r.user_id] || 0) + 1;
+      }
+      return acc;
+    }, {});
 
     const ranked = Object.entries(countsMap).map(([userId, count]) => ({
       userId,
@@ -36,17 +35,21 @@ Deno.serve(async (req) => {
     })).sort((a, b) => b.count - a.count).slice(0, 10);
 
     const userIds = ranked.map((r) => r.userId);
-    let profilesById = {};
-    if (userIds.length > 0) {
-      const { data: profiles, error: profilesErr } = await sb.from('profiles').select('id, username, avatar_url, bio, department, acquired_qualifications').in('id', userIds);
-      if (profilesErr) throw profilesErr;
-      profilesById = (profiles || []).reduce((acc, p) => {
-        acc[p.id] = p;
-        return acc;
-      }, {});
+
+    if (userIds.length === 0) {
+      return new Response(JSON.stringify([]), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
     }
 
-    // 各ユーザーの統計情報を取得
+    const { data: profiles, error: profilesErr } = await sb.from('profiles').select('id, username, avatar_url, bio, department, acquired_qualifications').in('id', userIds);
+    if (profilesErr) throw profilesErr;
+    const profilesById = (profiles || []).reduce((acc, p) => {
+      acc[p.id] = p;
+      return acc;
+    }, {});
+
     const statsPromises = userIds.map(id => 
       sb.rpc('get_user_stats', { p_user_id: id }).single()
     );
@@ -82,7 +85,7 @@ Deno.serve(async (req) => {
       status: 200
     });
   } catch (error) {
-    console.error("[get-weekly-ranking] error:", error); // ログの識別子を修正
+    console.error("[get-weekly-ranking] error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400

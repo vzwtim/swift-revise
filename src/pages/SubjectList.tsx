@@ -30,7 +30,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SubjectList() {
   const navigate = useNavigate();
-  const { session, user, profile, displayName, loading: authLoading } = useAuth();
+  const { session, user, loading: authLoading } = useAuth();
   const [cards, setCards] = useState<{ [questionId: string]: CardType }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [target, setTarget] = useState<number>(getDailyTarget());
@@ -48,18 +48,14 @@ export default function SubjectList() {
 
     const fetchData = async () => {
       setIsLoading(true);
-      // 問題の切り分けのため、一時的にカード読み込みを無効化
-      console.log("カード読み込みをスキップします。");
-      const loadedCards = {};
+      const loadedCards = await loadAllCards();
       setCards(loadedCards);
 
       if (user) {
         try {
           const { data, error } = await supabase.rpc('get_user_stats', { p_user_id: user.id }).single();
-          if (error) throw error;
-          if (data) {
-            setStats(data);
-          }
+          if (error) console.error('Error fetching user stats:', error);
+          else if (data) setStats(data);
         } catch (error) {
           console.error('Error fetching user stats:', error);
         }
@@ -152,12 +148,12 @@ export default function SubjectList() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Avatar className={cn("cursor-pointer h-8 w-8", getRankStyle(stats?.total_answers))}>
-                    <AvatarImage src={profile?.avatar_url || undefined} alt={displayName} />
-                    <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
+                    <AvatarImage src={user?.user_metadata?.avatar_url} alt={user?.user_metadata?.name} />
+                    <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>{displayName}</DropdownMenuLabel>
+                  <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate('/forum')} className="cursor-pointer">
                     <MessageSquare className="mr-2 h-4 w-4" />
