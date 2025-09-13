@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserProfileCard } from './user-profile-card';
 
+// データはフラット化されているので、ネストした profiles は不要
 interface RankedUser {
   userId: string;
   count: number;
@@ -21,13 +22,6 @@ interface RankedUser {
   acquired_qualifications?: string[] | null;
   total_answers: number;
   correct_answers: number;
-  profiles?: {
-    username: string | null;
-    avatar_url: string | null;
-    bio: string | null;
-    department: string | null;
-    acquired_qualifications: string[] | null;
-  } | null;
 }
 
 export function RankingCard() {
@@ -62,7 +56,6 @@ export function RankingCard() {
       if (!functionName) {
         setRanking([]);
         setLoading(false);
-        // TODO: Show a message that the ranking is not available yet
         return;
       }
 
@@ -122,32 +115,29 @@ export function RankingCard() {
     return (
       <>
         <ol className="space-y-4">
-          {displayedRanking.map((user, index) => {
-            // プロフィールデータを正規化
-            const profile = user.profiles ? user.profiles : user;
-
-            return (
+          {displayedRanking.map((user, index) => (
               <li key={user.userId} className="flex items-center gap-4">
                 <div className="font-bold text-lg w-6 text-center">{index + 1}</div>
-                <UserProfileCard
-                  profile={profile}
-                  total_answers={user.total_answers}
-                  correct_answers={user.correct_answers}
-                >
-                  <div className="flex items-center gap-4 flex-1 cursor-pointer">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={profile.avatar_url || undefined} alt={profile.username || ''} />
-                      <AvatarFallback>{profile.username?.charAt(0) || '?'}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <p className="font-medium">{profile.username || '名無しさん'}</p>
-                      <p className="text-sm text-muted-foreground">{getScoreLabel(user)}</p>
+                <div className="flex-1">
+                  <UserProfileCard
+                    profile={user} // userオブジェクト全体を渡す
+                    total_answers={user.total_answers}
+                    correct_answers={user.correct_answers}
+                  >
+                    <div className="flex items-center gap-4 cursor-pointer">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={user.avatar_url || undefined} alt={user.username || ''} />
+                        <AvatarFallback>{user.username?.charAt(0) || '?'}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{user.username || '名無しさん'}</p>
+                        <p className="text-sm text-muted-foreground">{getScoreLabel(user)}</p>
+                      </div>
                     </div>
-                  </div>
-                </UserProfileCard>
+                  </UserProfileCard>
+                </div>
               </li>
-            );
-          })}
+            ))}
         </ol>
         {ranking.length > 3 && (
           <div className="mt-4 text-center">

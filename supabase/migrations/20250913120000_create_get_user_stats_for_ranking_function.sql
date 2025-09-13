@@ -11,7 +11,7 @@ BEGIN
     count(ah.id) AS total_answers,
     count(CASE WHEN ah.is_correct THEN 1 END) AS correct_answers
   FROM
-    answer_history AS ah
+    answer_logs AS ah
   WHERE
     ah.user_id = ANY(p_user_ids)
   GROUP BY
