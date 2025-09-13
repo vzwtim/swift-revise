@@ -8,6 +8,7 @@ import { Trophy } from 'lucide-react';
 interface RankedUser {
   userId: string;
   count: number;
+  time_taken: number;
   username: string;
   avatar_url: string | null;
 }
@@ -22,7 +23,7 @@ export function RankingCard() {
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase.functions.invoke('get-daily-ranking');
+      const { data, error } = await supabase.functions.invoke('get-daily-challenge-ranking');
 
       if (error) {
         setError(error.message);
@@ -72,7 +73,7 @@ export function RankingCard() {
             </Avatar>
             <div className="flex-1">
               <p className="font-medium truncate">{user.username}</p>
-              <p className="text-sm text-muted-foreground">{user.count} 問</p>
+              <p className="text-sm text-muted-foreground">{user.count}問正解 / {user.time_taken}秒</p>
             </div>
           </li>
         ))}
@@ -85,7 +86,7 @@ export function RankingCard() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Trophy className="h-5 w-5 text-yellow-500" />
-          本日の回答数ランキング
+          今日の10問 ランキング
         </CardTitle>
       </CardHeader>
       <CardContent>

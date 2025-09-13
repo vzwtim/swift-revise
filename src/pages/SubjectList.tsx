@@ -1,7 +1,7 @@
 import { SubjectCard } from "@/components/subject-card";
 import { RankingCard } from "@/components/ranking-card";
 import { subjects } from "@/data/questions";
-import { GraduationCap, BarChart3, RefreshCw, BookOpen, LogIn, LogOut } from "lucide-react";
+import { GraduationCap, BarChart3, RefreshCw, BookOpen, LogIn, LogOut, User, CalendarCheck } from "lucide-react";
 import { DailyProgressChart } from "@/components/daily-progress-chart";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -142,6 +142,10 @@ export default function SubjectList() {
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>プロフィール編集</span>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>ログアウト</span>
@@ -188,6 +192,23 @@ export default function SubjectList() {
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <Card className="mb-8 card-elevated border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <CalendarCheck className="h-5 w-5 text-primary" />
+                    今日の10問
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    毎日10問の実力テストに挑戦
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <Button onClick={() => navigate('/daily-challenge')} className="w-full" size="sm">
+                    <CalendarCheck className="h-4 w-4 mr-2" />
+                    挑戦する
+                  </Button>
+                </CardContent>
+              </Card>
               <Card className="mb-8 card-elevated border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-lg">

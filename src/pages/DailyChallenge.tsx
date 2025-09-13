@@ -1,0 +1,148 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { QuizCard } from "@/components/quiz-card";
+import { Button } from "@/components/ui/button";
+import { subjects } from "@/data/questions";
+import { UserAnswer, Question } from "@/lib/types";
+import { ArrowLeft, RotateCcw } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+
+// Function to get 10 random questions
+const getDailyQuestions = (): Question[] => {
+  const allQuestions = subjects.flatMap((s) => s.units.flatMap((u) => u.questions));
+  const shuffled = allQuestions.sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, 10);
+};
+
+export default function DailyChallenge() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<UserAnswer[]>([]);
+  const [showResult, setShowResult] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [totalTime, setTotalTime] = useState<number | null>(null);
+
+  useEffect(() => {
+    setQuestions(getDailyQuestions());
+    setStartTime(Date.now());
+  }, []);
+
+  const handleAnswer = (answer: number, timeSpent: number) => {
+    const currentQuestion = questions[currentQuestionIndex];
+    const isCorrect = answer === currentQuestion.answer;
+    const userAnswer: UserAnswer = { questionId: currentQuestion.id, answer, timeSpent, isCorrect, grade: 0 };
+
+    setAnswers((prev) => [...prev, userAnswer]);
+    setShowResult(true);
+  };
+
+  const handleNext = async () => {
+    const nextIndex = currentQuestionIndex + 1;
+    if (nextIndex >= questions.length) {
+      const endTime = Date.now();
+      const timeTaken = Math.round((endTime - (startTime || endTime)) / 1000);
+      setTotalTime(timeTaken);
+      setIsComplete(true);
+      if (user) {
+        await saveResult(timeTaken);
+      }
+    } else {
+      setCurrentQuestionIndex(nextIndex);
+      setShowResult(false);
+    }
+  };
+
+  const saveResult = async (timeTaken: number) => {
+    if (!user) return;
+
+    const correctAnswers = answers.filter((a) => a.isCorrect).length;
+    const { error } = await supabase.from('daily_challenge_results').insert({
+      user_id: user.id,
+      score: correctAnswers,
+      time_taken: timeTaken,
+    });
+
+    if (error) {
+      console.error('Error saving daily challenge result:', error);
+    }
+  };
+
+  const handleRestart = () => {
+    setQuestions(getDailyQuestions());
+    setCurrentQuestionIndex(0);
+    setAnswers([]);
+    setShowResult(false);
+    setIsComplete(false);
+    setStartTime(Date.now());
+  };
+
+  if (isComplete) {
+    const correctAnswers = answers.filter(a => a.isCorrect).length;
+    return (
+      <div className="min-h-screen gradient-learning flex items-center justify-center">
+        <div className="max-w-md w-full mx-4">
+          <div className="text-center p-8 bg-background/80 backdrop-blur-sm rounded-xl border card-elevated">
+            <h2 className="text-2xl font-bold mb-2">チャレンジ完了！</h2>
+            <p>正解数: {correctAnswers} / {questions.length}</p>
+            <p>タイム: {totalTime}秒</p>
+            <div className="space-y-3 mt-6">
+              <Button onClick={() => navigate('/')} className="w-full gradient-primary">ホームに戻る</Button>
+              <Button onClick={handleRestart} variant="outline" className="w-full gap-2">
+                <RotateCcw className="h-4 w-4" />
+                もう一度挑戦
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const currentQuestion = questions[currentQuestionIndex];
+
+  return (
+    <div className="min-h-screen gradient-learning">
+      <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              戻る
+            </Button>
+            <div>
+              <h1 className="text-lg font-semibold">今日の10問</h1>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8">
+        {currentQuestion ? (
+          <QuizCard
+            question={currentQuestion}
+            questionNumber={currentQuestionIndex + 1}
+            totalQuestions={questions.length}
+            onAnswer={handleAnswer}
+            showResult={showResult}
+            selectedAnswer={showResult ? answers[answers.length - 1]?.answer : undefined}
+            lastResult={answers[answers.length - 1]?.isCorrect}
+          />
+        ) : (
+          <p>問題の読み込み中...</p>
+        )}
+        
+        {showResult && (
+          <div className="text-center mt-8">
+            <Button onClick={handleNext} size="lg" className="gradient-primary">
+              {currentQuestionIndex + 1 >= questions.length ? "結果を見る" : "次の問題"}
+            </Button>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
