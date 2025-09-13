@@ -1,55 +1,70 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
-Deno.serve(async (req)=>{
+
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', {
     headers: corsHeaders
   });
+
   try {
-    const sb = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '' // service role を使う
-    );
-    // JST の今日0時 → DBはUTCなので補正してISOに
+    const sb = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+
+    // JSTの今日0時を計算
     const now = new Date();
     const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
     jst.setHours(0, 0, 0, 0);
     const fromISO = new Date(jst.getTime() - 9 * 60 * 60 * 1000).toISOString();
-    // 1) 今日の回答ログだけ取得（必要なら limit/offset をつける）
+
+    // 1. 今日の回答ログを取得
     const { data: logs, error: logsErr } = await sb.from('answer_logs').select('user_id, created_at').gte('created_at', fromISO);
     if (logsErr) throw logsErr;
-    // 2) userごとにカウント（メモリ内集計）
-    const countsMap = {};
-    for (const r of logs || []){
-      if (!r.user_id) continue;
-      countsMap[r.user_id] = (countsMap[r.user_id] || 0) + 1;
-    }
-    // 上位10ユーザーの user_id を取る
-    const ranked = Object.entries(countsMap).map(([userId, count])=>({
-        userId,
-        count
-      })).sort((a, b)=>b.count - a.count).slice(0, 10);
-    const userIds = ranked.map((r)=>r.userId);
-    let profilesById = {};
-    if (userIds.length > 0) {
-      const { data: profiles, error: profilesErr } = await sb.from('profiles').select('id, username, avatar_url, bio, department, acquired_qualifications').in('id', userIds);
-      if (profilesErr) throw profilesErr;
-      profilesById = (profiles || []).reduce((acc, p)=>{
-        acc[p.id] = p;
-        return acc;
-      }, {});
-    }
 
-    // 各ユーザーの統計情報を一括で取得
-    let statsMap = {};
-    if (userIds.length > 0) {
-      const { data: stats, error: statsErr } = await sb.rpc('get_user_stats_for_ranking', { p_user_ids: userIds });
-      if (statsErr) throw statsErr;
+    // 2. メモリ内でユーザーごとにカウント
+    const countsMap = (logs || []).reduce((acc, r) => {
+      if (r.user_id) {
+        acc[r.user_id] = (acc[r.user_id] || 0) + 1;
+      }
+      return acc;
+    }, {});
 
-      statsMap = (stats || []).reduce((acc, s) => {
-        acc[s.user_id] = s;
-        return acc;
-      }, {});
+    // 3. 上位10ユーザーを決定
+    const ranked = Object.entries(countsMap).map(([userId, count]) => ({
+      userId,
+      count
+    })).sort((a, b) => b.count - a.count).slice(0, 10);
+
+    const userIds = ranked.map((r) => r.userId);
+
+    if (userIds.length === 0) {
+      return new Response(JSON.stringify([]), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
     }
 
-    const result = ranked.map((r)=> {
+    // 4. プロフィール情報を一括取得
+    const { data: profiles, error: profilesErr } = await sb.from('profiles').select('id, username, avatar_url, bio, department, acquired_qualifications').in('id', userIds);
+    if (profilesErr) throw profilesErr;
+    const profilesById = (profiles || []).reduce((acc, p) => {
+      acc[p.id] = p;
+      return acc;
+    }, {});
+
+    // 5. 統計情報をユーザーごとに取得 (既存の get_user_stats を使用)
+    const statsPromises = userIds.map(id => 
+      sb.rpc('get_user_stats', { p_user_id: id }).single()
+    );
+    const statsResults = await Promise.all(statsPromises);
+
+    const statsMap = statsResults.reduce((acc, result, index) => {
+      if (result.data) {
+        acc[userIds[index]] = result.data;
+      }
+      return acc;
+    }, {});
+
+    // 6. 最終的なレスポンスを組み立て
+    const result = ranked.map((r) => {
       const profile = profilesById[r.userId];
       const stats = statsMap[r.userId] || { total_answers: 0, correct_answers: 0 };
       return {
@@ -66,22 +81,15 @@ Deno.serve(async (req)=>{
         time_taken: 0
       };
     });
+
     return new Response(JSON.stringify(result), {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json'
-      },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200
     });
   } catch (error) {
-    console.error("[get-daily-ranking] error:", error); // ←ログ追加
-    return new Response(JSON.stringify({
-      error: error.message
-    }), {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json'
-      },
+    console.error("[get-daily-study-ranking] error:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400
     });
   }

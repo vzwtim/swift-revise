@@ -118,23 +118,15 @@ export function RankingCard() {
           {displayedRanking.map((user, index) => (
               <li key={user.userId} className="flex items-center gap-4">
                 <div className="font-bold text-lg w-6 text-center">{index + 1}</div>
+                <UserProfileCard profile={user}>
+                  <Avatar className="h-10 w-10 cursor-pointer">
+                    <AvatarImage src={user.avatar_url || undefined} alt={user.username || ''} />
+                    <AvatarFallback>{user.username?.charAt(0) || '?'}</AvatarFallback>
+                  </Avatar>
+                </UserProfileCard>
                 <div className="flex-1">
-                  <UserProfileCard
-                    profile={user} // userオブジェクト全体を渡す
-                    total_answers={user.total_answers}
-                    correct_answers={user.correct_answers}
-                  >
-                    <div className="flex items-center gap-4 cursor-pointer">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={user.avatar_url || undefined} alt={user.username || ''} />
-                        <AvatarFallback>{user.username?.charAt(0) || '?'}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{user.username || '名無しさん'}</p>
-                        <p className="text-sm text-muted-foreground">{getScoreLabel(user)}</p>
-                      </div>
-                    </div>
-                  </UserProfileCard>
+                  <p className="font-medium">{user.username || '名無しさん'}</p>
+                  <p className="text-sm text-muted-foreground">{getScoreLabel(user)}</p>
                 </div>
               </li>
             ))}
