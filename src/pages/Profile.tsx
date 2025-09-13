@@ -9,6 +9,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+import { getRankStyle } from '@/lib/utils';
 
 export default function Profile() {
   const { user } = useAuth();
@@ -20,12 +22,27 @@ export default function Profile() {
   const [bio, setBio] = useState('');
   const [department, setDepartment] = useState('');
   const [qualifications, setQualifications] = useState('');
+  const [stats, setStats] = useState<{ total_answers: number; correct_answers: number } | null>(null);
 
   useEffect(() => {
     if (user) {
       getProfile();
+      getUserStats();
     }
   }, [user]);
+
+  async function getUserStats() {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase.rpc('get_user_stats', { p_user_id: user.id }).single();
+      if (error) throw error;
+      if (data) {
+        setStats(data);
+      }
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+    }
+  }
 
   async function getProfile() {
     try {
@@ -142,15 +159,35 @@ export default function Profile() {
           </CardHeader>
           <CardContent>
             <form onSubmit={updateProfile} className="space-y-6">
-              <div className="flex items-center gap-6">
-                <Avatar className="h-24 w-24">
-                  <AvatarImage src={avatarUrl} alt="Avatar" />
-                  <AvatarFallback>{username?.charAt(0) || 'U'}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <Label htmlFor="avatar">アバター画像</Label>
-                  <Input id="avatar" type="file" onChange={uploadAvatar} disabled={uploading} />
-                  {uploading && <p className="text-sm text-muted-foreground mt-2">アップロード中...</p>}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                <div className="flex flex-col items-center gap-4">
+                  <Avatar className={cn("h-24 w-24", getRankStyle(stats?.total_answers))}>
+                    <AvatarImage src={avatarUrl} alt="Avatar" />
+                    <AvatarFallback>{username?.charAt(0) || 'U'}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <Label htmlFor="avatar" className="sr-only">アバター画像</Label>
+                    <Input id="avatar" type="file" onChange={uploadAvatar} disabled={uploading} />
+                    {uploading && <p className="text-sm text-muted-foreground mt-2">アップロード中...</p>}
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex justify-around text-center p-4 bg-muted/50 rounded-lg">
+                    <div>
+                      <p className="text-2xl font-bold">{stats ? stats.total_answers : '-'}</p>
+                      <p className="text-sm text-muted-foreground">総回答数</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{stats ? stats.correct_answers : '-'}</p>
+                      <p className="text-sm text-muted-foreground">総正解数</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">
+                        {stats && stats.total_answers > 0 ? Math.round((stats.correct_answers / stats.total_answers) * 100) : 0}%
+                      </p>
+                      <p className="text-sm text-muted-foreground">正解率</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 

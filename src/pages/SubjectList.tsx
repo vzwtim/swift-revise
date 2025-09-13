@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getDailyTarget, setDailyTarget } from "@/lib/answer-stats";
+import { cn, getRankStyle } from "@/lib/utils";
 import { loadAllCards } from "@/lib/card-storage";
 import { Card as CardType, MasteryLevel } from "@/lib/types";
 import { QuizSettingsDialog } from "@/components/quiz-settings-dialog";
@@ -37,6 +38,7 @@ export default function SubjectList() {
   const [isBulkStudyOpen, setIsBulkStudyOpen] = useState(false);
   const [quizTarget, setQuizTarget] = useState({ id: '', title: '', description: '' });
   const [selectedBulkStudyUnitIds, setSelectedBulkStudyUnitIds] = useState<string[]>([]);
+  const [stats, setStats] = useState<{ total_answers: number; correct_answers: number } | null>(null);
 
   useEffect(() => {
     if (!session) {
@@ -48,10 +50,23 @@ export default function SubjectList() {
       setIsLoading(true);
       const loadedCards = await loadAllCards();
       setCards(loadedCards);
+
+      if (user) {
+        try {
+          const { data, error } = await supabase.rpc('get_user_stats', { p_user_id: user.id }).single();
+          if (error) throw error;
+          if (data) {
+            setStats(data);
+          }
+        } catch (error) {
+          console.error('Error fetching user stats:', error);
+        }
+      }
+
       setIsLoading(false);
     };
     fetchData();
-  }, [session]);
+  }, [session, user]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -134,7 +149,7 @@ export default function SubjectList() {
             ) : session ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Avatar className="cursor-pointer h-8 w-8">
+                  <Avatar className={cn("cursor-pointer h-8 w-8", getRankStyle(stats?.total_answers))}>
                     <AvatarImage src={user?.user_metadata?.avatar_url} alt={user?.user_metadata?.name} />
                     <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
