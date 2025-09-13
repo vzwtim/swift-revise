@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { getRankStyle } from '@/lib/utils';
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, refreshUserProfile } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState('');
@@ -84,11 +84,11 @@ export default function Profile() {
 
       const updates = {
         id: user.id,
-        username,
-        avatar_url: avatarUrl,
-        bio,
-        department,
-        acquired_qualifications: qualificationsArray,
+        username: username || null,
+        avatar_url: avatarUrl || null,
+        bio: bio || null,
+        department: department || null,
+        acquired_qualifications: qualificationsArray.length > 0 ? qualificationsArray : null,
         updated_at: new Date(),
       };
 
@@ -97,6 +97,12 @@ export default function Profile() {
       if (error) {
         throw error;
       }
+      
+      // プロフィール更新後に全体の状態をリフレッシュ
+      if (refreshUserProfile) {
+        await refreshUserProfile();
+      }
+
       alert('Profile updated!');
     } catch (error) {
       alert('Error updating the data!');
@@ -125,8 +131,18 @@ export default function Profile() {
         throw uploadError;
       }
 
+      // publicUrlを取得して、すぐにUIに反映させる
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
       setAvatarUrl(publicUrl);
+
+      // 同時にprofilesテーブルも更新する
+      const { error: updateError } = await supabase.from('profiles').update({ avatar_url: publicUrl, updated_at: new Date() }).eq('id', user.id);
+      if (updateError) throw updateError;
+
+      // 全体の状態をリフレッシュ
+      if (refreshUserProfile) {
+        await refreshUserProfile();
+      }
 
     } catch (error) {
       alert('Error uploading avatar!');

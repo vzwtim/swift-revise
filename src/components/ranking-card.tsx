@@ -118,7 +118,11 @@ export function RankingCard() {
           {displayedRanking.map((user, index) => (
               <li key={user.userId} className="flex items-center gap-4">
                 <div className="font-bold text-lg w-6 text-center">{index + 1}</div>
-                <UserProfileCard profile={user}>
+                <UserProfileCard
+                  profile={user}
+                  total_answers={user.total_answers}
+                  correct_answers={user.correct_answers}
+                >
                   <Avatar className="h-10 w-10 cursor-pointer">
                     <AvatarImage src={user.avatar_url || undefined} alt={user.username || ''} />
                     <AvatarFallback>{user.username?.charAt(0) || '?'}</AvatarFallback>
