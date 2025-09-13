@@ -38,10 +38,9 @@ Deno.serve(async (req) => {
     const userIds = ranked.map((r) => r.userId);
     let profilesById = {};
     if (userIds.length > 0) {
-      // 新しいRPC関数を呼び出す
-      const { data: profilesWithFallback, error: profilesErr } = await sb.rpc('get_profiles_with_fallback_name', { p_user_ids: userIds });
+      const { data: profiles, error: profilesErr } = await sb.from('profiles').select('id, username, avatar_url, bio, department, acquired_qualifications').in('id', userIds);
       if (profilesErr) throw profilesErr;
-      profilesById = (profilesWithFallback || []).reduce((acc, p) => {
+      profilesById = (profiles || []).reduce((acc, p) => {
         acc[p.id] = p;
         return acc;
       }, {});
@@ -66,7 +65,7 @@ Deno.serve(async (req) => {
       return {
         userId: r.userId,
         count: r.count,
-        username: profile?.display_name, // フォールバック済みのdisplay_nameを使用
+        username: profile?.username ?? '名無しさん',
         avatar_url: profile?.avatar_url ?? null,
         bio: profile?.bio ?? null,
         department: profile?.department ?? null,

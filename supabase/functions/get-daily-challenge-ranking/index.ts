@@ -37,35 +37,38 @@ Deno.serve(async (req)=>{
       });
     }
 
-    // 複数のユーザー統計情報をユーザーごとに取得
+    // プロフィール情報を取得
+    const { data: profilesData, error: profilesError } = await supabaseClient
+      .from('profiles')
+      .select('id, username, avatar_url, bio, department, acquired_qualifications')
+      .in('id', userIds);
+    if (profilesError) throw profilesError;
+
+    // 統計情報をユーザーごとに取得
     const statsPromises = userIds.map(id => 
       supabaseClient.rpc('get_user_stats', { p_user_id: id }).single()
     );
     const statsResults = await Promise.all(statsPromises);
 
-    // プロフィール情報とフォールバック名を一括で取得
-    const { data: profilesData, error: profilesError } = await supabaseClient.rpc('get_profiles_with_fallback_name', { p_user_ids: userIds });
-    if (profilesError) throw profilesError;
-
     // データを処理しやすいようにMapに変換
+    const profilesMap = new Map(profilesData.map(profile => [profile.id, profile]));
     const statsMap = new Map();
     statsResults.forEach((result, index) => {
       if (result.data) {
         statsMap.set(userIds[index], result.data);
       }
     });
-    const profilesMap = new Map(profilesData.map(profile => [profile.id, profile])); // id をキーにする
 
     const rankedUsers = data.map((result) => {
       const stats = statsMap.get(result.user_id) || { total_answers: 0, correct_answers: 0 };
-      const profile = profilesMap.get(result.user_id) || { bio: null, department: null, acquired_qualifications: null, display_name: '名無しさん' };
+      const profile = profilesMap.get(result.user_id) || { username: '名無しさん', avatar_url: null, bio: null, department: null, acquired_qualifications: null };
       
       return {
         userId: result.user_id,
         score: result.score,
         time_taken: result.time_taken,
-        username: profile.display_name, // フォールバック済みの表示名を使用
-        avatar_url: result.avatar_url || profile.avatar_url || null, // 両方から取得を試みる
+        username: profile.username || '名無しさん', // resultのusernameは使わない
+        avatar_url: profile.avatar_url || null,
         bio: profile.bio,
         department: profile.department,
         acquired_qualifications: profile.acquired_qualifications,
