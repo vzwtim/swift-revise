@@ -137,10 +137,18 @@ export default function SubjectList() {
           </div>
           <div className="flex items-center gap-4 text-sm">
             {session && (
-              <div className="flex items-center gap-2">
-                <BarChart3 className="h-4 w-4" />
-                <span>進捗: {overallProgress}%</span>
-              </div>
+              <>
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  <span>進捗: {overallProgress}%</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>総回答数: {stats ? stats.total_answers : '-'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>正解率: {stats && stats.total_answers > 0 ? `${Math.round((stats.correct_answers / stats.total_answers) * 100)}%` : '0%'}</span>
+                </div>
+              </>
             )}
             {authLoading ? (
               <Skeleton className="h-8 w-8 rounded-full" />

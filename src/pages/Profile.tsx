@@ -188,22 +188,7 @@ export default function Profile() {
                   </div>
                 </div>
                 <div className="space-y-4">
-                  <div className="flex justify-around text-center p-4 bg-muted/50 rounded-lg">
-                    <div>
-                      <p className="text-2xl font-bold">{stats ? stats.total_answers : '-'}</p>
-                      <p className="text-sm text-muted-foreground">総回答数</p>
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">{stats ? stats.correct_answers : '-'}</p>
-                      <p className="text-sm text-muted-foreground">総正解数</p>
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">
-                        {stats && stats.total_answers > 0 ? Math.round((stats.correct_answers / stats.total_answers) * 100) : 0}%
-                      </p>
-                      <p className="text-sm text-muted-foreground">正解率</p>
-                    </div>
-                  </div>
+                  
                 </div>
               </div>
 
