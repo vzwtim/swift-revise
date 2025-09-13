@@ -32,7 +32,7 @@ export function DailyProgressChart({ target }: Props) {
                   <div className="flex items-center">
                     <span
                       className="w-2.5 h-2.5 rounded-full mr-2"
-                      style={{ backgroundColor: name === 'correct' ? 'hsl(var(--primary))' : `hsl(var(--quiz-incorrect))` }}
+                      style={{ backgroundColor: name === 'correct' ? 'hsl(var(--primary-light))' : `hsl(var(--quiz-incorrect))` }}
                     />
                     <span>{`${name === 'correct' ? '正解' : '不正解'}: ${value}`}</span>
                   </div>
@@ -41,7 +41,7 @@ export function DailyProgressChart({ target }: Props) {
             }
           />
           <Legend verticalAlign="top" height={36}/>
-          <Bar dataKey="correct" stackId="a" fill="hsl(var(--primary))" name="正解" />
+          <Bar dataKey="correct" stackId="a" fill="hsl(var(--primary-light))" name="正解" />
           <Bar dataKey="incorrect" stackId="a" fill="hsl(var(--quiz-incorrect))" name="不正解" />
           {target > 0 && (
             <ReferenceLine

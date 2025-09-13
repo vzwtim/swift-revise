@@ -20,6 +20,7 @@ All colors MUST be HSL.
 
     /* Learning-focused primary colors */
     --primary: 213 87% 55%;
+    --primary-light: 213 87% 75%;
     --primary-foreground: 0 0% 100%;
     --primary-glow: 213 87% 65%;
 
@@ -90,6 +91,7 @@ All colors MUST be HSL.
     --popover-foreground: 220 15% 92%;
 
     --primary: 213 87% 65%;
+    --primary-light: 213 87% 55%;
     --primary-foreground: 220 15% 6%;
     --primary-glow: 213 87% 75%;
 
