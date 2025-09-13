@@ -9,40 +9,37 @@ export async function getDailyAnswerCounts(days = 7): Promise<{ date: string; co
   }
 
   const result: { date: string; correct: number; incorrect: number }[] = [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // 今日の0時に設定
 
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const startOfDay = d.toISOString();
+    const targetDate = new Date();
+    targetDate.setHours(0, 0, 0, 0);
+    targetDate.setDate(targetDate.getDate() - i);
 
-    const nextDay = new Date(d);
-    nextDay.setDate(d.getDate() + 1);
-    const endOfDay = nextDay.toISOString();
+    const startOfDay = new Date(targetDate);
+    const endOfDay = new Date(targetDate);
+    endOfDay.setDate(targetDate.getDate() + 1);
 
     const { count: correctCount, error: correctError } = await supabase
       .from('answer_logs')
       .select('id', { count: 'exact' })
       .eq('user_id', user.id)
       .eq('is_correct', true)
-      .gte('created_at', startOfDay)
-      .lt('created_at', endOfDay);
+      .gte('created_at', startOfDay.toISOString())
+      .lt('created_at', endOfDay.toISOString());
 
     const { count: incorrectCount, error: incorrectError } = await supabase
       .from('answer_logs')
       .select('id', { count: 'exact' })
       .eq('user_id', user.id)
       .eq('is_correct', false)
-      .gte('created_at', startOfDay)
-      .lt('created_at', endOfDay);
+      .gte('created_at', startOfDay.toISOString())
+      .lt('created_at', endOfDay.toISOString());
 
     if (correctError || incorrectError) {
       console.error('Error fetching daily answer counts:', correctError || incorrectError);
-      // エラー時は0として処理を続行
     }
 
-    const label = `${d.getMonth() + 1}/${d.getDate()}`;
+    const label = `${targetDate.getMonth() + 1}/${targetDate.getDate()}`;
     result.push({
       date: label,
       correct: correctCount || 0,

@@ -29,21 +29,27 @@ Deno.serve(async (req)=>{
     const userIds = ranked.map((r)=>r.userId);
     let profilesById = {};
     if (userIds.length > 0) {
-      const { data: profiles, error: profilesErr } = await sb.from('profiles').select('id, username, avatar_url').in('id', userIds);
+      const { data: profiles, error: profilesErr } = await sb.from('profiles').select('id, username, avatar_url, bio, department, acquired_qualifications').in('id', userIds);
       if (profilesErr) throw profilesErr;
       profilesById = (profiles || []).reduce((acc, p)=>{
         acc[p.id] = p;
         return acc;
       }, {});
     }
-    const result = ranked.map((r)=>({
+    const result = ranked.map((r)=> {
+      const profile = profilesById[r.userId];
+      return {
         userId: r.userId,
         count: r.count,
-        username: profilesById[r.userId]?.username ?? '名無しさん',
-        avatar_url: profilesById[r.userId]?.avatar_url ?? null,
+        username: profile?.username ?? '名無しさん',
+        avatar_url: profile?.avatar_url ?? null,
+        bio: profile?.bio ?? null,
+        department: profile?.department ?? null,
+        acquired_qualifications: profile?.acquired_qualifications ?? null,
         score: 0,
         time_taken: 0
-      }));
+      };
+    });
     return new Response(JSON.stringify(result), {
       headers: {
         ...corsHeaders,

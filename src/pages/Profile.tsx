@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -16,6 +17,9 @@ export default function Profile() {
   const [username, setUsername] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [bio, setBio] = useState('');
+  const [department, setDepartment] = useState('');
+  const [qualifications, setQualifications] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -30,7 +34,7 @@ export default function Profile() {
 
       const { data, error, status } = await supabase
         .from('profiles')
-        .select(`username, avatar_url`)
+        .select(`username, avatar_url, bio, department, acquired_qualifications`)
         .eq('id', user.id)
         .single();
 
@@ -41,6 +45,9 @@ export default function Profile() {
       if (data) {
         setUsername(data.username || '');
         setAvatarUrl(data.avatar_url || '');
+        setBio(data.bio || '');
+        setDepartment(data.department || '');
+        setQualifications((data.acquired_qualifications || []).join(', '));
       }
     } catch (error) {
       alert('Error loading user data!');
@@ -56,10 +63,15 @@ export default function Profile() {
       setLoading(true);
       if (!user) throw new Error('No user');
 
+      const qualificationsArray = qualifications.split(',').map(q => q.trim()).filter(q => q);
+
       const updates = {
         id: user.id,
         username,
         avatar_url: avatarUrl,
+        bio,
+        department,
+        acquired_qualifications: qualificationsArray,
         updated_at: new Date(),
       };
 
@@ -145,6 +157,21 @@ export default function Profile() {
               <div>
                 <Label htmlFor="username">ユーザー名</Label>
                 <Input id="username" type="text" value={username || ''} onChange={(e) => setUsername(e.target.value)} />
+              </div>
+
+              <div>
+                <Label htmlFor="bio">自己紹介</Label>
+                <Textarea id="bio" value={bio || ''} onChange={(e) => setBio(e.target.value)} placeholder="あなたの経歴や学習目標など" />
+              </div>
+
+              <div>
+                <Label htmlFor="department">所属</Label>
+                <Input id="department" type="text" value={department || ''} onChange={(e) => setDepartment(e.target.value)} placeholder="会社名、部署名など" />
+              </div>
+
+              <div>
+                <Label htmlFor="qualifications">取得済み資格</Label>
+                <Input id="qualifications" type="text" value={qualifications || ''} onChange={(e) => setQualifications(e.target.value)} placeholder="資格名をカンマ区切りで入力" />
               </div>
 
               <div>

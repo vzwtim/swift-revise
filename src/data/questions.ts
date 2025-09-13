@@ -39,7 +39,7 @@ const parseAresCsv = (csv: string): Question[] => {
       return {
         id: `ares-${problemNo}-${subId}`,
         subject: subjectName,
-        unit: '○×問題',
+        unit: '基本問題',
         question: stem,
         choices: ['TRUE', 'FALSE'],
         answer: correct === 'TRUE' ? 0 : 1,
@@ -56,11 +56,11 @@ export const subjects: Subject[] = Object.entries(SUBJECT_MAP).map(([code, name]
   return {
     id: `ares-${code}`,
     name,
-    description: `${name}の○×問題`,
+    description: `${name}の基本問題`,
     units: [
       {
         id: `ares-${code}-unit`,
-        name: '○×問題',
+        name: '基本問題',
         description: `${name}の全問題`,
         subjectId: `ares-${code}`,
         questions,
