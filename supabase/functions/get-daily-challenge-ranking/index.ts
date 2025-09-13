@@ -30,31 +30,35 @@ Deno.serve(async (req)=>{
 
     const userIds = data.map(result => result.user_id);
 
-    // 改善案1: 複数のユーザー統計情報を一括で取得
-    const { data: statsData, error: statsError } = await supabaseClient.rpc('get_user_stats_for_ranking', { user_ids: userIds });
+    if (userIds.length === 0) {
+      return new Response(JSON.stringify([]), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+      });
+    }
+
+    // 複数のユーザー統計情報を一括で取得
+    const { data: statsData, error: statsError } = await supabaseClient.rpc('get_user_stats_for_ranking', { p_user_ids: userIds });
     if (statsError) throw statsError;
 
-    // 改善案2: プロフィール情報を一括で取得
-    const { data: profilesData, error: profilesError } = await supabaseClient
-      .from('profiles')
-      .select('user_id, bio, department, acquired_qualifications')
-      .in('user_id', userIds);
+    // プロフィール情報とフォールバック名を一括で取得
+    const { data: profilesData, error: profilesError } = await supabaseClient.rpc('get_profiles_with_fallback_name', { p_user_ids: userIds });
     if (profilesError) throw profilesError;
 
     // データを処理しやすいようにMapに変換
     const statsMap = new Map(statsData.map(stat => [stat.user_id, stat]));
-    const profilesMap = new Map(profilesData.map(profile => [profile.user_id, profile]));
+    const profilesMap = new Map(profilesData.map(profile => [profile.id, profile])); // id をキーにする
 
     const rankedUsers = data.map((result) => {
       const stats = statsMap.get(result.user_id) || { total_answers: 0, correct_answers: 0 };
-      const profile = profilesMap.get(result.user_id) || { bio: null, department: null, acquired_qualifications: null };
+      const profile = profilesMap.get(result.user_id) || { bio: null, department: null, acquired_qualifications: null, display_name: '名無しさん' };
       
       return {
         userId: result.user_id,
         score: result.score,
         time_taken: result.time_taken,
-        username: result.username || '名無しさん',
-        avatar_url: result.avatar_url || null,
+        username: profile.display_name, // フォールバック済みの表示名を使用
+        avatar_url: result.avatar_url || profile.avatar_url || null, // 両方から取得を試みる
         bio: profile.bio,
         department: profile.department,
         acquired_qualifications: profile.acquired_qualifications,
