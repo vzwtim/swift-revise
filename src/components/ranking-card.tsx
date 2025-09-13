@@ -23,6 +23,7 @@ export function RankingCard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('dailyChallenge');
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     const fetchRanking = async () => {
@@ -94,7 +95,7 @@ export function RankingCard() {
     const getScoreLabel = (user: RankedUser) => {
       switch (activeTab) {
         case 'dailyChallenge':
-          return `${user.score}点 / ${user.time_taken}秒`;
+          return `${user.score}点 / ${user.time_taken.toFixed(2)}秒`;
         case 'dailyStudy':
         case 'weeklyStudy':
           return `${user.count}問`;
@@ -103,32 +104,49 @@ export function RankingCard() {
       }
     }
 
+    const displayedRanking = showAll ? ranking : ranking.slice(0, 3);
+
     return (
-      <ol className="space-y-4">
-        {ranking.map((user, index) => (
-          <li key={user.userId} className="flex items-center gap-4">
-            <div className="font-bold text-lg w-6 text-center">{index + 1}</div>
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={user.avatar_url || undefined} alt={user.username} />
-              <AvatarFallback>{user.username.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <p className="font-medium">{user.username}</p>
-              <p className="text-sm text-muted-foreground">{getScoreLabel(user)}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
+      <>
+        <ol className="space-y-4">
+          {displayedRanking.map((user, index) => (
+            <li key={user.userId} className="flex items-center gap-4">
+              <div className="font-bold text-lg w-6 text-center">{index + 1}</div>
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={user.avatar_url || undefined} alt={user.username} />
+                <AvatarFallback>{user.username.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <p className="font-medium">{user.username}</p>
+                <p className="text-sm text-muted-foreground">{getScoreLabel(user)}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+        {ranking.length > 3 && (
+          <div className="mt-4 text-center">
+            <Button variant="ghost" size="sm" onClick={() => setShowAll(prev => !prev)}>
+              {showAll ? '閉じる' : 'もっと見る'}
+            </Button>
+          </div>
+        )}
+      </>
     );
   };
 
   return (
     <Card className="card-elevated">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Trophy className="h-5 w-5 text-yellow-500" />
-          ランキング
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Trophy className="h-5 w-5 text-yellow-500" />
+            ランキング
+          </CardTitle>
+          <Button onClick={() => navigate('/daily-challenge')} size="sm" variant="outline" className="gap-2">
+            <CalendarCheck className="h-4 w-4" />
+            今日の10問に挑戦
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
