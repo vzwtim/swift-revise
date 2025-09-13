@@ -72,7 +72,7 @@ export function RankingCard() {
               <AvatarFallback>{user.username.charAt(0)}</AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <p className="font-medium truncate">{user.username}</p>
+              <p className="font-medium">{user.username}</p>
               <p className="text-sm text-muted-foreground">{user.count}問正解 / {user.time_taken}秒</p>
             </div>
           </li>

@@ -32,6 +32,7 @@ Deno.serve(async (req) => {
 
     const rankedUsers = data.map(result => ({
       userId: result.user_id,
+      score: result.score,
       count: result.score,
       time_taken: result.time_taken,
       username: result.profiles?.username || '名無しさん',
