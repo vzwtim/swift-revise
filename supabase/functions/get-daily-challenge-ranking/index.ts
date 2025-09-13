@@ -40,6 +40,7 @@ Deno.serve(async (req)=>{
       .from('profiles')
       .select('id, username, avatar_url, bio, department, acquired_qualifications')
       .in('id', userIds);
+
     if (profilesError) throw profilesError;
 
     const statsPromises = userIds.map(id => 

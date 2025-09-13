@@ -43,12 +43,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data: profiles, error: profilesErr } = await sb.from('profiles').select('id, username, avatar_url, bio, department, acquired_qualifications').in('id', userIds);
-    if (profilesErr) throw profilesErr;
-    const profilesById = (profiles || []).reduce((acc, p) => {
-      acc[p.id] = p;
-      return acc;
-    }, {});
+    let profilesById = {};
+    if (userIds.length > 0) {
+      const { data: profilesWithFallback, error: profilesErr } = await sb.rpc('get_profiles_with_fallback_name', { p_user_ids: userIds });
+      if (profilesErr) throw profilesErr;
+      profilesById = (profilesWithFallback || []).reduce((acc, p) => {
+        acc[p.id] = p;
+        return acc;
+      }, {});
+    }
 
     const statsPromises = userIds.map(id => 
       sb.rpc('get_user_stats', { p_user_id: id }).single()
@@ -68,7 +71,7 @@ Deno.serve(async (req) => {
       return {
         userId: r.userId,
         count: r.count,
-        username: profile?.username ?? '名無しさん',
+        username: profile?.display_name ?? '名無しさん',
         avatar_url: profile?.avatar_url ?? null,
         bio: profile?.bio ?? null,
         department: profile?.department ?? null,

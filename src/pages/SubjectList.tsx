@@ -30,7 +30,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SubjectList() {
   const navigate = useNavigate();
-  const { session, user, loading: authLoading } = useAuth();
+  const { session, user, profile, loading: authLoading } = useAuth();
   const [cards, setCards] = useState<{ [questionId: string]: CardType }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [target, setTarget] = useState<number>(getDailyTarget());
@@ -148,8 +148,8 @@ export default function SubjectList() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Avatar className={cn("cursor-pointer h-8 w-8", getRankStyle(stats?.total_answers))}>
-                    <AvatarImage src={user?.user_metadata?.avatar_url} alt={user?.user_metadata?.name} />
-                    <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                    <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.username || ''} />
+                    <AvatarFallback>{profile?.username?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
