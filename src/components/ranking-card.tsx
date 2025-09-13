@@ -142,7 +142,7 @@ export function RankingCard() {
                 </div>
               </li>
             );
-          })}}
+          })}
         </ol>
         {ranking.length > 3 && (
           <div className="mt-4 text-center">
