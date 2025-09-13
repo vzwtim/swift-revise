@@ -1,5 +1,6 @@
 import { Question, Subject } from '@/lib/types';
-import aresCsv from './ARES2024.csv?raw';
+import ares2023Csv from './ARES2023.csv?raw';
+import ares2024Csv from './ARES2024.csv?raw';
 
 const SUBJECT_MAP: Record<string, string> = {
   '101': '企業と不動産',
@@ -10,15 +11,15 @@ const SUBJECT_MAP: Record<string, string> = {
   '106': '不動産証券化と倫理行動',
 };
 
-const parseAresCsv = (csv: string): Question[] => {
+const parseAresCsv = (csv: string, year: string): Question[] => {
   const lines = csv.trim().split(/\r?\n/);
   const rows: string[] = [];
   let buffer: string[] = [];
 
   for (const line of lines.slice(1)) {
-    if (/^\d{3}-\d+,\d+,/.test(line)) {
+    if (/^\d{3}-\d+,[^,]+,/.test(line)) {
       if (buffer.length) {
-        rows.push(buffer.join(''));
+        rows.push(buffer.join('\n'));
         buffer = [];
       }
       buffer.push(line);
@@ -26,18 +27,23 @@ const parseAresCsv = (csv: string): Question[] => {
       buffer.push(line);
     }
   }
-  if (buffer.length) rows.push(buffer.join(''));
+  if (buffer.length) rows.push(buffer.join('\n'));
+
+  const splitCsvRow = (row: string) =>
+    row.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map((field) =>
+      field.replace(/^"(.*)"$/, '$1').replace(/""/g, '"')
+    );
 
   return rows
     .map((row) => {
-      const match = row.match(/^([^,]+),([^,]+),(.*),(TRUE|FALSE),(.*)$/);
-      if (!match) return null;
-      const [, problemNo, subId, stem, correct, explanation] = match;
+      const columns = splitCsvRow(row);
+      if (columns.length !== 5) return null;
+      const [problemNo, subId, stem, correct, explanation] = columns;
       const [subjectCode] = problemNo.split('-');
       const subjectName = SUBJECT_MAP[subjectCode];
       if (!subjectName) return null;
       return {
-        id: `ares-${problemNo}-${subId}`,
+        id: `ares-${year}-${problemNo}-${subId}`,
         subject: subjectName,
         unit: '○×問題',
         question: stem,
@@ -49,7 +55,10 @@ const parseAresCsv = (csv: string): Question[] => {
     .filter((q): q is Question => q !== null);
 };
 
-export const aresQuestions = parseAresCsv(aresCsv);
+const ares2023Questions = parseAresCsv(ares2023Csv, '2023');
+const ares2024Questions = parseAresCsv(ares2024Csv, '2024');
+
+export const aresQuestions = [...ares2023Questions, ...ares2024Questions];
 
 export const subjects: Subject[] = Object.entries(SUBJECT_MAP).map(([code, name]) => {
   const questions = aresQuestions.filter((q) => q.subject === name);
