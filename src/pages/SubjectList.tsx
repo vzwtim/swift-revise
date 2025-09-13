@@ -189,47 +189,14 @@ export default function SubjectList() {
               <RankingCard />
             </div>
 
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold mb-2">学習科目</h2>
-              <p className="text-muted-foreground">
-                間隔反復学習で効率的に知識を定着させましょう
-              </p>
+            <div className="mb-8 flex justify-between items-center">
+              <h2 className="text-2xl font-bold">学習科目</h2>
+              <Button onClick={() => setIsBulkStudyOpen(true)} variant="outline" className="gap-2">
+                <RefreshCw className="h-4 w-4" />
+                まとめて学習
+              </Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <Card className="mb-8 card-elevated border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <CalendarCheck className="h-5 w-5 text-primary" />
-                    今日の10問
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    毎日10問の実力テストに挑戦
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <Button onClick={() => navigate('/daily-challenge')} className="w-full" size="sm">
-                    <CalendarCheck className="h-4 w-4 mr-2" />
-                    挑戦する
-                  </Button>
-                </CardContent>
-              </Card>
-              <Card className="mb-8 card-elevated border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <RefreshCw className="h-5 w-5 text-primary" />
-                    まとめて学習
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    学習したい単元を選択してまとめて学習
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <Button onClick={() => setIsBulkStudyOpen(true)} className="w-full" size="sm">
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    単元を選択して学習
-                  </Button>
-                </CardContent>
-              </Card>
               {updatedSubjects.map((subject) => (
                 <SubjectCard
                   key={subject.id}

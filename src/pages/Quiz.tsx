@@ -292,7 +292,7 @@ export default function Quiz() {
   return (
     <div className="min-h-screen gradient-learning">
       {feedback?.show && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+        <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
           <div className={`text-9xl font-bold animate-pop-out ${feedback.correct ? 'text-green-400' : 'text-red-500'}`}>
             {feedback.correct ? '○' : '×'}
           </div>

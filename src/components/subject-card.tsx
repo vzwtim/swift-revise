@@ -18,7 +18,7 @@ export function SubjectCard({ subject, progressCounts, onStartLearning }: Subjec
   const totalNewCards = progressCounts.New || 0;
 
   return (
-    <Card className="card-elevated hover:shadow-lg transition-all duration-200 group">
+    <Card className="card-elevated hover:shadow-lg transition-all duration-200 group flex flex-col h-full">
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
           <div className="flex-1 pr-4">
@@ -37,25 +37,27 @@ export function SubjectCard({ subject, progressCounts, onStartLearning }: Subjec
         </div>
       </CardHeader>
       
-      <CardContent className="pt-0">
-        <div className="flex items-center justify-between mb-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <BookOpen className="h-4 w-4" />
-            <span>{subject.totalQuestions} 問題</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs flex-wrap">
-            <span className="text-green-500 font-medium" title="Perfect">P: {progressCounts.Perfect || 0}</span>
-            <span className="text-blue-500 font-medium" title="Great">G: {progressCounts.Great || 0}</span>
-            <span className="text-yellow-400 font-medium" title="Good">G: {progressCounts.Good || 0}</span>
-            <span className="text-orange-500 font-medium" title="Bad">B: {progressCounts.Bad || 0}</span>
-            <span className="text-red-500 font-medium" title="Miss">M: {progressCounts.Miss || 0}</span>
-            <span className="text-zinc-400 font-medium" title="New">N: {progressCounts.New || 0}</span>
+      <CardContent className="pt-0 flex flex-col justify-between flex-grow">
+        <div>
+          <div className="flex items-center justify-between mb-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <BookOpen className="h-4 w-4" />
+              <span>{subject.totalQuestions} 問題</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs flex-wrap">
+              <span className="text-green-500 font-medium" title="Perfect">P: {progressCounts.Perfect || 0}</span>
+              <span className="text-blue-500 font-medium" title="Great">G: {progressCounts.Great || 0}</span>
+              <span className="text-yellow-400 font-medium" title="Good">G: {progressCounts.Good || 0}</span>
+              <span className="text-orange-500 font-medium" title="Bad">B: {progressCounts.Bad || 0}</span>
+              <span className="text-red-500 font-medium" title="Miss">M: {progressCounts.Miss || 0}</span>
+              <span className="text-zinc-400 font-medium" title="New">N: {progressCounts.New || 0}</span>
+            </div>
           </div>
         </div>
 
         <Button 
           onClick={() => onStartLearning(subject.id)}
-          className="w-full gradient-primary hover:opacity-90 transition-opacity"
+          className="w-full gradient-primary hover:opacity-90 transition-opacity mt-4"
           size="sm"
         >
           学習を開始
