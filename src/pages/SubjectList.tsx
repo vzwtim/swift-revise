@@ -53,10 +53,10 @@ export default function SubjectList() {
 
       if (user) {
         try {
-          const { data, error } = await supabase.rpc('get_user_stats', { p_user_id: user.id }).single();
+          const { data, error } = await supabase.rpc('get_user_stats_for_ranking', { p_user_ids: [user.id] });
           if (error) throw error;
-          if (data) {
-            setStats(data);
+          if (data && data.length > 0) {
+            setStats(data[0]);
           }
         } catch (error) {
           console.error('Error fetching user stats:', error);
