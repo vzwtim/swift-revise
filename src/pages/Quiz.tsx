@@ -37,6 +37,7 @@ export default function Quiz() {
   const [currentCard, setCurrentCard] = useState<Card | null>(null);
   const [showNoUnitsError, setShowNoUnitsError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [feedback, setFeedback] = useState<{ show: boolean; correct: boolean } | null>(null);
 
   
 
@@ -98,9 +99,20 @@ export default function Quiz() {
     }
   }, [currentQuestionIndex, questions, cards]);
 
+  useEffect(() => {
+    if (feedback?.show) {
+      const timer = setTimeout(() => {
+        setFeedback(null);
+      }, 1000); // 1秒後に非表示
+      return () => clearTimeout(timer);
+    }
+  }, [feedback]);
+
   const handleAnswer = async (answer: number, timeSpent: number) => {
     const currentQuestion = questions[currentQuestionIndex];
     const isCorrect = answer === currentQuestion.answer;
+    setFeedback({ show: true, correct: isCorrect });
+
     const grade = SpacedRepetitionScheduler.calculateGrade({ questionId: currentQuestion.id, answer, timeSpent, isCorrect, grade: 0 });
     const userAnswer: UserAnswer = { questionId: currentQuestion.id, answer, timeSpent, isCorrect, grade };
 
@@ -279,6 +291,13 @@ export default function Quiz() {
 
   return (
     <div className="min-h-screen gradient-learning">
+      {feedback?.show && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className={`text-9xl font-bold animate-pop-out ${feedback.correct ? 'text-green-400' : 'text-red-500'}`}>
+            {feedback.correct ? '○' : '×'}
+          </div>
+        </div>
+      )}
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-4">

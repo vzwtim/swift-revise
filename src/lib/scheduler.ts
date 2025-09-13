@@ -32,8 +32,12 @@ export class SpacedRepetitionScheduler {
     let newLevel: MasteryLevel;
 
     if (isCorrect) {
-      const nextIndex = Math.min(currentIndex + 1, levels.length - 1);
-      newLevel = levels[nextIndex];
+      if (currentMasteryLevel === "Bad") {
+        newLevel = "Good"; // Badで正解したらGoodにする
+      } else {
+        const nextIndex = Math.min(currentIndex + 1, levels.length - 1);
+        newLevel = levels[nextIndex];
+      }
     } else { // isCorrect is false (不正解の場合)
       if (currentMasteryLevel === "Good") {
         newLevel = "Bad"; // Goodから不正解の場合、Badにする
