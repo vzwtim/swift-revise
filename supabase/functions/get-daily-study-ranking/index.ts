@@ -36,8 +36,22 @@ Deno.serve(async (req)=>{
         return acc;
       }, {});
     }
+
+    // 各ユーザーの統計情報を一括で取得
+    let statsMap = {};
+    if (userIds.length > 0) {
+      const { data: stats, error: statsErr } = await sb.rpc('get_user_stats_for_ranking', { p_user_ids: userIds });
+      if (statsErr) throw statsErr;
+
+      statsMap = (stats || []).reduce((acc, s) => {
+        acc[s.user_id] = s;
+        return acc;
+      }, {});
+    }
+
     const result = ranked.map((r)=> {
       const profile = profilesById[r.userId];
+      const stats = statsMap[r.userId] || { total_answers: 0, correct_answers: 0 };
       return {
         userId: r.userId,
         count: r.count,
@@ -46,6 +60,8 @@ Deno.serve(async (req)=>{
         bio: profile?.bio ?? null,
         department: profile?.department ?? null,
         acquired_qualifications: profile?.acquired_qualifications ?? null,
+        total_answers: stats.total_answers,
+        correct_answers: stats.correct_answers,
         score: 0,
         time_taken: 0
       };

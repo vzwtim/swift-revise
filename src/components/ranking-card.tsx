@@ -19,6 +19,8 @@ interface RankedUser {
   bio?: string | null;
   department?: string | null;
   acquired_qualifications?: string[] | null;
+  total_answers: number;
+  correct_answers: number;
   profiles?: {
     username: string | null;
     avatar_url: string | null;
@@ -127,16 +129,22 @@ export function RankingCard() {
             return (
               <li key={user.userId} className="flex items-center gap-4">
                 <div className="font-bold text-lg w-6 text-center">{index + 1}</div>
-                <UserProfileCard profile={profile}>
-                  <Avatar className="h-10 w-10 cursor-pointer">
-                    <AvatarImage src={profile.avatar_url || undefined} alt={profile.username || ''} />
-                    <AvatarFallback>{profile.username?.charAt(0) || '?'}</AvatarFallback>
-                  </Avatar>
+                <UserProfileCard
+                  profile={profile}
+                  total_answers={user.total_answers}
+                  correct_answers={user.correct_answers}
+                >
+                  <div className="flex items-center gap-4 flex-1 cursor-pointer">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={profile.avatar_url || undefined} alt={profile.username || ''} />
+                      <AvatarFallback>{profile.username?.charAt(0) || '?'}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <p className="font-medium">{profile.username || '名無しさん'}</p>
+                      <p className="text-sm text-muted-foreground">{getScoreLabel(user)}</p>
+                    </div>
+                  </div>
                 </UserProfileCard>
-                <div className="flex-1">
-                  <p className="font-medium">{profile.username || '名無しさん'}</p>
-                  <p className="text-sm text-muted-foreground">{getScoreLabel(user)}</p>
-                </div>
               </li>
             );
           })}
