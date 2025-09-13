@@ -30,7 +30,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SubjectList() {
   const navigate = useNavigate();
-  const { session, user, loading: authLoading } = useAuth();
+  const { session, user, profile, displayName, loading: authLoading } = useAuth();
   const [cards, setCards] = useState<{ [questionId: string]: CardType }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [target, setTarget] = useState<number>(getDailyTarget());
@@ -150,12 +150,12 @@ export default function SubjectList() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Avatar className={cn("cursor-pointer h-8 w-8", getRankStyle(stats?.total_answers))}>
-                    <AvatarImage src={user?.user_metadata?.avatar_url} alt={user?.user_metadata?.name} />
-                    <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                    <AvatarImage src={profile?.avatar_url || undefined} alt={displayName} />
+                    <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
+                  <DropdownMenuLabel>{displayName}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate('/forum')} className="cursor-pointer">
                     <MessageSquare className="mr-2 h-4 w-4" />

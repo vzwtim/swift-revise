@@ -115,7 +115,15 @@ export function RankingCard() {
     return (
       <>
         <ol className="space-y-4">
-          {displayedRanking.map((user, index) => (
+          {displayedRanking.map((user, index) => {
+            // 順位に応じてリングのスタイルを決定
+            const rankRingClass = [
+              'ring-yellow-400', // 1位: 金
+              'ring-slate-400', // 2位: 銀
+              'ring-orange-500'  // 3位: 銅
+            ][index];
+
+            return (
               <li key={user.userId} className="flex items-center gap-4">
                 <div className="font-bold text-lg w-6 text-center">{index + 1}</div>
                 <UserProfileCard
@@ -123,7 +131,7 @@ export function RankingCard() {
                   total_answers={user.total_answers}
                   correct_answers={user.correct_answers}
                 >
-                  <Avatar className="h-10 w-10 cursor-pointer">
+                  <Avatar className={`h-10 w-10 cursor-pointer ${rankRingClass ? `ring-2 ring-offset-2 ring-offset-background ${rankRingClass}` : ''}`}>
                     <AvatarImage src={user.avatar_url || undefined} alt={user.username || ''} />
                     <AvatarFallback>{user.username?.charAt(0) || '?'}</AvatarFallback>
                   </Avatar>
@@ -133,7 +141,8 @@ export function RankingCard() {
                   <p className="text-sm text-muted-foreground">{getScoreLabel(user)}</p>
                 </div>
               </li>
-            ))}
+            );
+          })}}
         </ol>
         {ranking.length > 3 && (
           <div className="mt-4 text-center">

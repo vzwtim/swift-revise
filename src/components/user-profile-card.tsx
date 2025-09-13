@@ -65,17 +65,13 @@ export function UserProfileCard({
             </p>
           )}
 
-          {/* 学習記録 */}
-          {(total_answers !== undefined && correct_answers !== undefined) && (
-            <div className="space-y-2">
-              <h5 className="text-sm font-semibold flex items-center">
-                <BarChart className="mr-2 h-4 w-4" />
-                学習記録
-              </h5>
-              <div className="text-sm text-muted-foreground space-y-1">
-                <p>総解答数: {total_answers}問</p>
-                <p>総正解数: {correct_answers}問</p>
-              </div>
+          {/* 総解答数 */}
+          {(total_answers !== undefined) && (
+            <div className="flex items-center pt-2">
+              <BarChart className="mr-2 h-4 w-4 opacity-70" />
+              <span className="text-xs text-muted-foreground">
+                総解答数: {total_answers}問
+              </span>
             </div>
           )}
 

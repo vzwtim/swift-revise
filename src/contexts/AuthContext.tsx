@@ -19,6 +19,7 @@ interface AuthContextType {
   profile: Profile | null; // profile を追加
   loading: boolean;
   refreshUserProfile: () => Promise<void>; // 更新関数を追加
+  displayName: string; // 表示名を追加
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -27,6 +28,7 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   loading: true,
   refreshUserProfile: async () => {},
+  displayName: '名無しさん', // デフォルト値
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -102,6 +104,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     profile,
     loading,
     refreshUserProfile,
+    displayName: profile?.username || user?.user_metadata?.name || '名無しさん',
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
