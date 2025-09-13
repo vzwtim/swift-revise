@@ -11,6 +11,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import { PostWithProfile } from './ForumPage'; // 型を再利用
+import { UserProfileCard } from '@/components/user-profile-card';
 
 // コメント用の型定義
 type CommentWithProfile = {
@@ -19,8 +20,11 @@ type CommentWithProfile = {
   content: string | null;
   is_anonymous: boolean;
   profiles: {
-    username: string;
+    username: string | null;
     avatar_url: string | null;
+    bio: string | null;
+    department: string | null;
+    acquired_qualifications: string[] | null;
   } | null;
 };
 
@@ -46,13 +50,13 @@ export function PostDetailPage() {
     try {
       const postPromise = supabase
         .from('posts')
-        .select('*, profiles(username, avatar_url)')
+        .select('*, profiles(username, avatar_url, bio, department, acquired_qualifications)')
         .eq('id', postId)
         .single();
 
       const commentsPromise = supabase
         .from('comments')
-        .select('*, profiles(username, avatar_url)')
+        .select('*, profiles(username, avatar_url, bio, department, acquired_qualifications)')
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
 
@@ -123,12 +127,14 @@ export function PostDetailPage() {
     <div className="container mx-auto py-8 max-w-3xl">
       <Card className="mb-8">
         <CardHeader className="flex flex-row items-center gap-4">
-          <Avatar className="h-12 w-12">
-            <AvatarImage src={!post.is_anonymous ? post.profiles?.avatar_url ?? undefined : undefined} />
-            <AvatarFallback className="text-xl">
-              {!post.is_anonymous ? post.profiles?.username?.charAt(0) : '?'}
-            </AvatarFallback>
-          </Avatar>
+          <UserProfileCard profile={post.profiles}>
+            <Avatar className="h-12 w-12 cursor-pointer">
+              <AvatarImage src={!post.is_anonymous ? post.profiles?.avatar_url ?? undefined : undefined} />
+              <AvatarFallback className="text-xl">
+                {!post.is_anonymous ? post.profiles?.username?.charAt(0) : '?'}
+              </AvatarFallback>
+            </Avatar>
+          </UserProfileCard>
           <div>
             <CardTitle className="text-2xl">{post.title}</CardTitle>
             <p className="text-sm text-muted-foreground">
@@ -180,12 +186,14 @@ export function PostDetailPage() {
         {comments.length > 0 ? (
           comments.map(comment => (
             <div key={comment.id} className="flex gap-4">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={!comment.is_anonymous ? comment.profiles?.avatar_url ?? undefined : undefined} />
-                <AvatarFallback>
-                  {!comment.is_anonymous ? comment.profiles?.username?.charAt(0) : '?'}
-                </AvatarFallback>
-              </Avatar>
+              <UserProfileCard profile={comment.profiles}>
+                <Avatar className="h-10 w-10 cursor-pointer">
+                  <AvatarImage src={!comment.is_anonymous ? comment.profiles?.avatar_url ?? undefined : undefined} />
+                  <AvatarFallback>
+                    {!comment.is_anonymous ? comment.profiles?.username?.charAt(0) : '?'}
+                  </AvatarFallback>
+                </Avatar>
+              </UserProfileCard>
               <div className="flex-1 bg-muted/50 rounded-lg p-4">
                 <div className="flex items-baseline gap-2">
                   <p className="font-semibold">{!comment.is_anonymous ? comment.profiles?.username : '匿名さん'}</p>

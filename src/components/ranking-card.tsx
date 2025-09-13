@@ -7,6 +7,7 @@ import { Trophy, CalendarCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UserProfileCard } from './user-profile-card';
 
 interface RankedUser {
   userId: string;
@@ -15,6 +16,16 @@ interface RankedUser {
   time_taken: number;
   username: string;
   avatar_url: string | null;
+  bio?: string | null;
+  department?: string | null;
+  acquired_qualifications?: string[] | null;
+  profiles?: {
+    username: string | null;
+    avatar_url: string | null;
+    bio: string | null;
+    department: string | null;
+    acquired_qualifications: string[] | null;
+  } | null;
 }
 
 export function RankingCard() {
@@ -109,19 +120,26 @@ export function RankingCard() {
     return (
       <>
         <ol className="space-y-4">
-          {displayedRanking.map((user, index) => (
-            <li key={user.userId} className="flex items-center gap-4">
-              <div className="font-bold text-lg w-6 text-center">{index + 1}</div>
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={user.avatar_url || undefined} alt={user.username} />
-                <AvatarFallback>{user.username.charAt(0)}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <p className="font-medium">{user.username}</p>
-                <p className="text-sm text-muted-foreground">{getScoreLabel(user)}</p>
-              </div>
-            </li>
-          ))}
+          {displayedRanking.map((user, index) => {
+            // プロフィールデータを正規化
+            const profile = user.profiles ? user.profiles : user;
+
+            return (
+              <li key={user.userId} className="flex items-center gap-4">
+                <div className="font-bold text-lg w-6 text-center">{index + 1}</div>
+                <UserProfileCard profile={profile}>
+                  <Avatar className="h-10 w-10 cursor-pointer">
+                    <AvatarImage src={profile.avatar_url || undefined} alt={profile.username || ''} />
+                    <AvatarFallback>{profile.username?.charAt(0) || '?'}</AvatarFallback>
+                  </Avatar>
+                </UserProfileCard>
+                <div className="flex-1">
+                  <p className="font-medium">{profile.username || '名無しさん'}</p>
+                  <p className="text-sm text-muted-foreground">{getScoreLabel(user)}</p>
+                </div>
+              </li>
+            );
+          })}
         </ol>
         {ranking.length > 3 && (
           <div className="mt-4 text-center">

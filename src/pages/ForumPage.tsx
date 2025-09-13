@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { UserProfileCard } from '@/components/user-profile-card';
 
 // Postの型定義。profilesテーブルの型も含む
 export type PostWithProfile = {
@@ -13,8 +14,11 @@ export type PostWithProfile = {
   title: string;
   is_anonymous: boolean;
   profiles: {
-    username: string;
+    username: string | null;
     avatar_url: string | null;
+    bio: string | null;
+    department: string | null;
+    acquired_qualifications: string[] | null;
   } | null;
 };
 
@@ -37,7 +41,10 @@ export function ForumPage() {
           is_anonymous,
           profiles (
             username,
-            avatar_url
+            avatar_url,
+            bio,
+            department,
+            acquired_qualifications
           )
         `)
         .order('created_at', { ascending: false });
@@ -87,12 +94,14 @@ export function ForumPage() {
           <Link to={`/posts/${post.id}`} key={post.id} className="block">
             <Card className="hover:bg-muted/50 transition-colors">
               <CardContent className="p-4 flex items-center gap-4">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={!post.is_anonymous ? post.profiles?.avatar_url ?? undefined : undefined} />
-                  <AvatarFallback>
-                    {!post.is_anonymous ? post.profiles?.username?.charAt(0) : '?'}
-                  </AvatarFallback>
-                </Avatar>
+                <UserProfileCard profile={post.profiles}>
+                  <Avatar className="h-10 w-10 cursor-pointer">
+                    <AvatarImage src={!post.is_anonymous ? post.profiles?.avatar_url ?? undefined : undefined} />
+                    <AvatarFallback>
+                      {!post.is_anonymous ? post.profiles?.username?.charAt(0) : '?'}
+                    </AvatarFallback>
+                  </Avatar>
+                </UserProfileCard>
                 <div className="flex-1">
                   <h3 className="font-semibold">{post.title}</h3>
                   <p className="text-sm text-muted-foreground">
