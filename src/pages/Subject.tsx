@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
+import { getIncompleteQuiz, clearIncompleteQuiz } from "@/lib/quiz-progress";
 import { UnitCard } from "@/components/unit-card";
 import { Button } from "@/components/ui/button";
 import { MasteryPieChart } from "@/components/mastery-pie-chart";
 import { subjects } from "@/data/questions";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Zap } from "lucide-react";
 import { loadAllCards } from "@/lib/card-storage";
 import { QuizSettingsDialog } from "@/components/quiz-settings-dialog";
 import { Card as CardType, MasteryLevel } from "@/lib/types";
@@ -20,6 +21,7 @@ export default function Subject() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [quizTarget, setQuizTarget] = useState({ id: '', title: '', description: '' });
+  const [incompleteSessions, setIncompleteSessions] = useState<Record<string, { questionIds: number[], currentIndex: number } | null>>({});
 
   
 
@@ -28,10 +30,23 @@ export default function Subject() {
       setIsLoading(true);
       const loadedCards = await loadAllCards();
       setCards(loadedCards);
+
+      const currentSubject = subjects.find((s) => s.id === id);
+      if (currentSubject) {
+        const sessions: Record<string, any> = {};
+        currentSubject.units.forEach(unit => {
+          const session = getIncompleteQuiz(unit.id);
+          if (session) {
+            sessions[unit.id] = session;
+          }
+        });
+        setIncompleteSessions(sessions);
+      }
+
       setIsLoading(false);
     };
     fetchData();
-  }, []);
+  }, [id]);
 
   const handleOpenSettings = (targetId: string, title: string, description: string) => {
     setQuizTarget({ id: targetId, title, description });
@@ -87,6 +102,10 @@ export default function Subject() {
   };
 
   const handleStartQuiz = (unitId: string) => {
+    // 中断セッションがあったらクリアする
+    clearIncompleteQuiz(unitId);
+    setIncompleteSessions(prev => ({ ...prev, [unitId]: null }));
+
     const unit = subject?.units.find((u) => u.id === unitId);
     if (!unit) return;
     handleOpenSettings(
@@ -160,10 +179,26 @@ export default function Subject() {
 
         <div className="mb-8">
           <h2 className="text-2xl font-bold mb-4">学習単元</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {subject.units.map((unit) => (
-              <UnitCard key={unit.id} unit={unit} onStartQuiz={handleStartQuiz} />
-            ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+            {subject.units.map((unit) => {
+              const incompleteQuiz = incompleteSessions[unit.id];
+              return (
+                <div key={unit.id} className="flex flex-col gap-2">
+                  <div className="flex-grow">
+                    <UnitCard unit={unit} onStartQuiz={handleStartQuiz} />
+                  </div>
+                  {incompleteQuiz && (
+                    <Button
+                      className="w-full gradient-primary-light animate-pulse-slow"
+                      onClick={() => navigate(`/quiz/${unit.id}`, { state: { incompleteQuiz } })}
+                    >
+                      <Zap className="mr-2 h-4 w-4" />
+                      続きから ({incompleteQuiz.currentIndex + 1}問目)
+                    </Button>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       </main>

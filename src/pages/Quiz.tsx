@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { aresQuestions as allQuestions } from "@/data/questions";
 
 import { QuizCard } from "@/components/quiz-card";
 import { Button } from "@/components/ui/button";
@@ -11,9 +12,9 @@ import { saveAnswerHistory } from "@/lib/answer-history";
 import { initializeCards, buildQuizQuestions } from "@/lib/quiz-builder";
 
 import {
-  getQuizProgress,
-  saveQuizProgress,
-  clearQuizProgress,
+  getIncompleteQuiz,
+  saveIncompleteQuiz,
+  clearIncompleteQuiz,
 } from "@/lib/quiz-progress";
 import { loadAllCards, saveCards } from "@/lib/card-storage";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,10 +29,7 @@ export default function Quiz() {
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
   const [showResult, setShowResult] = useState(false);
   const [cards, setCards] = useState<{ [questionId: string]: Card }>({});
-  const [isComplete, setIsComplete] = useState(false);
   const [sessionId] = useState(() => crypto.randomUUID());
-  const [resumePrompt, setResumePrompt] = useState(false);
-  const [savedIndex, setSavedIndex] = useState(0);
   const [unit, setUnit] = useState<Unit | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentCard, setCurrentCard] = useState<Card | null>(null);
@@ -39,57 +37,65 @@ export default function Quiz() {
   const [isLoading, setIsLoading] = useState(true);
   const [feedback, setFeedback] = useState<{ show: boolean; correct: boolean } | null>(null);
 
-  
+  const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const [incompleteSession, setIncompleteSession] = useState<{ questionIds: number[], currentIndex: number } | null>(null);
+
 
   useEffect(() => {
     if (!unitId) return;
 
-    const fetchData = async () => {
+    const initializeQuiz = async () => {
       setIsLoading(true);
 
       const allCards = await loadAllCards();
       const { currentCardsMap, newCardsToSave } = await initializeCards(allCards);
-
       if (newCardsToSave.length > 0) {
         await saveCards(newCardsToSave);
       }
       setCards(currentCardsMap);
 
-      const {
-        questionsToShow,
-        pageTitle,
-        pageDescription,
-        showNoUnitsError,
-      } = buildQuizQuestions(unitId, location.search, currentCardsMap);
+      // 外部から再開情報が渡された場合 (e.g. Subjectページから)
+      const resumeFromState = location.state?.incompleteQuiz;
+      if (resumeFromState) {
+        const restoredQuestions = resumeFromState.questionIds
+          .map((id: number) => allQuestions.find(q => q.id === id))
+          .filter((q?: Question): q is Question => !!q);
+        
+        if (restoredQuestions.length > 0) {
+          setQuestions(restoredQuestions);
+          setCurrentQuestionIndex(resumeFromState.currentIndex);
+          const { pageTitle, pageDescription } = buildQuizQuestions(unitId, location.search, currentCardsMap);
+          setUnit({ id: unitId, name: pageTitle, description: pageDescription, subjectId: "", questions: restoredQuestions, dueCards: 0, newCards: 0 });
+          setIsLoading(false);
+          // stateをクリア
+          navigate(location.pathname, { replace: true, state: {} });
+          return;
+        }
+      }
 
+      // localStorageに中断データがあるか確認
+      const savedSession = getIncompleteQuiz(unitId);
+      if (savedSession && savedSession.questionIds.length > 0) {
+        setIncompleteSession(savedSession);
+        setShowResumePrompt(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // 新規クイズ作成
+      const { questionsToShow, pageTitle, pageDescription, showNoUnitsError } = buildQuizQuestions(unitId, location.search, currentCardsMap);
       if (showNoUnitsError) {
         setShowNoUnitsError(true);
         setIsLoading(false);
         return;
       }
-
-      setUnit({
-        id: unitId,
-        name: pageTitle,
-        description: pageDescription,
-        subjectId: "",
-        questions: questionsToShow,
-        dueCards: 0,
-        newCards: questionsToShow.length,
-      });
+      setUnit({ id: unitId, name: pageTitle, description: pageDescription, subjectId: "", questions: questionsToShow, dueCards: 0, newCards: questionsToShow.length });
       setQuestions(questionsToShow);
-
-      if (!unitId.startsWith("review-")) {
-        const saved = getQuizProgress(unitId);
-        if (saved > 0 && saved < questionsToShow.length) {
-          setResumePrompt(true);
-          setSavedIndex(saved);
-        }
-      }
+      setCurrentQuestionIndex(0);
       setIsLoading(false);
     };
 
-    fetchData();
+    initializeQuiz();
   }, [unitId, location.search]);
 
   useEffect(() => {
@@ -131,23 +137,23 @@ export default function Quiz() {
       updatedCard = SpacedRepetitionScheduler.scheduleCard(updatedCard, grade);
 
       setCards((prev) => ({ ...prev, [currentQuestion.id]: updatedCard }));
-      setCurrentCard(updatedCard);
 
       await saveCards([updatedCard]);
     }
-
-    saveQuizProgress(unitId!, currentQuestionIndex + 1);
   };
 
   const handleNext = () => {
     const nextIndex = currentQuestionIndex + 1;
     if (nextIndex >= questions.length) {
       setIsComplete(true);
-      clearQuizProgress(unitId!);
+      if (unitId) clearIncompleteQuiz(unitId);
     } else {
       setCurrentQuestionIndex(nextIndex);
       setShowResult(false);
-      saveQuizProgress(unitId!, nextIndex);
+      if (unitId) {
+        const questionIds = questions.map(q => q.id);
+        saveIncompleteQuiz(unitId, questionIds, nextIndex);
+      }
     }
   };
 
@@ -156,12 +162,12 @@ export default function Quiz() {
     setAnswers([]);
     setShowResult(false);
     setIsComplete(false);
-    clearQuizProgress(unitId!);
+    if (unitId) clearIncompleteQuiz(unitId);
   };
 
   const handleFinish = () => {
+    if (unitId) clearIncompleteQuiz(unitId);
     const score = answers.length > 0 ? Math.round((answers.filter((a) => a.isCorrect).length / answers.length) * 100) : 0;
-    clearQuizProgress(unitId!);
     navigate(`/result?score=${score}&total=${questions.length}&correct=${answers.filter((a) => a.isCorrect).length}`);
   };
 
@@ -200,34 +206,45 @@ export default function Quiz() {
     );
   }
 
-  if (resumePrompt) {
+  if (showResumePrompt && incompleteSession) {
     return (
       <div className="min-h-screen gradient-learning flex items-center justify-center">
         <div className="text-center space-y-6 p-6 bg-background/80 backdrop-blur-sm rounded-xl border card-elevated">
           <div>
             <h2 className="text-2xl font-bold mb-2">前回の続きから</h2>
-            <p className="text-muted-foreground">前回は {savedIndex} 問目まで解答しました。</p>
+            <p className="text-muted-foreground">中断したクイズがあります。</p>
           </div>
           <div className="flex gap-4 justify-center">
             <Button
               className="gradient-primary"
               onClick={() => {
-                setCurrentQuestionIndex(savedIndex);
-                setShowResult(false);
-                setAnswers([]);
-                setResumePrompt(false);
+                const restoredQuestions = incompleteSession.questionIds
+                  .map(id => allQuestions.find(q => q.id === id))
+                  .filter((q): q is Question => !!q);
+                
+                if (restoredQuestions.length > 0) {
+                    setQuestions(restoredQuestions);
+                    setCurrentQuestionIndex(incompleteSession.currentIndex);
+                    const { pageTitle, pageDescription } = buildQuizQuestions(unitId!, location.search, cards);
+                    setUnit({ id: unitId!, name: pageTitle, description: pageDescription, subjectId: "", questions: restoredQuestions, dueCards: 0, newCards: 0 });
+                }
+                setShowResumePrompt(false);
+                setIncompleteSession(null);
               }}
             >
-              続きから
+              続きから ({incompleteSession.currentIndex + 1}問目)
             </Button>
             <Button
               variant="outline"
               onClick={() => {
-                clearQuizProgress(unitId!);
+                if (unitId) clearIncompleteQuiz(unitId);
+                setShowResumePrompt(false);
+                setIncompleteSession(null);
+                // 新規クイズ作成をトリガー
+                const { questionsToShow, pageTitle, pageDescription } = buildQuizQuestions(unitId!, location.search, cards);
+                setUnit({ id: unitId!, name: pageTitle, description: pageDescription, subjectId: "", questions: questionsToShow, dueCards: 0, newCards: questionsToShow.length });
+                setQuestions(questionsToShow);
                 setCurrentQuestionIndex(0);
-                setShowResult(false);
-                setAnswers([]);
-                setResumePrompt(false);
               }}
             >
               最初から
