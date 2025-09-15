@@ -19,6 +19,7 @@ export type PostWithProfile = {
     bio: string | null;
     department: string | null;
     acquired_qualifications: string[] | null;
+    studying_categories: string[] | null; // 追加
   } | null;
 };
 
@@ -44,7 +45,8 @@ export function ForumPage() {
             avatar_url,
             bio,
             department,
-            acquired_qualifications
+            acquired_qualifications,
+            studying_categories
           )
         `)
         .order('created_at', { ascending: false });
@@ -94,7 +96,12 @@ export function ForumPage() {
           <Link to={`/posts/${post.id}`} key={post.id} className="block">
             <Card className="hover:bg-muted/50 transition-colors">
               <CardContent className="p-4 flex items-center gap-4">
-                <UserProfileCard profile={post.profiles}>
+                <UserProfileCard
+                  profile={post.profiles ? {
+                    ...post.profiles,
+                    studying_qualifications: post.profiles.studying_categories,
+                  } : null}
+                >
                   <Avatar className="h-10 w-10 cursor-pointer">
                     <AvatarImage src={!post.is_anonymous ? post.profiles?.avatar_url ?? undefined : undefined} />
                     <AvatarFallback>

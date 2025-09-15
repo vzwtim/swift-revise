@@ -20,6 +20,7 @@ interface RankedUser {
   bio?: string | null;
   department?: string | null;
   acquired_qualifications?: string[] | null;
+  studying_categories?: string[] | null; // 追加
   total_answers: number;
   correct_answers: number;
 }
@@ -127,7 +128,14 @@ export function RankingCard() {
               <li key={user.userId} className="flex items-center gap-4">
                 <div className="font-bold text-lg w-6 text-center">{index + 1}</div>
                 <UserProfileCard
-                  profile={user}
+                  profile={{
+                    username: user.username,
+                    avatar_url: user.avatar_url,
+                    bio: user.bio,
+                    department: user.department,
+                    acquired_qualifications: user.acquired_qualifications,
+                    studying_qualifications: user.studying_categories, // マッピング
+                  }}
                   total_answers={user.total_answers}
                   correct_answers={user.correct_answers}
                 >

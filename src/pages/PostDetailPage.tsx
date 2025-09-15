@@ -25,6 +25,7 @@ type CommentWithProfile = {
     bio: string | null;
     department: string | null;
     acquired_qualifications: string[] | null;
+    studying_categories: string[] | null; // 追加
   } | null;
 };
 
@@ -50,13 +51,13 @@ export function PostDetailPage() {
     try {
       const postPromise = supabase
         .from('posts')
-        .select('*, profiles(username, avatar_url, bio, department, acquired_qualifications)')
+        .select('*, profiles(username, avatar_url, bio, department, acquired_qualifications, studying_categories)')
         .eq('id', postId)
         .single();
 
       const commentsPromise = supabase
         .from('comments')
-        .select('*, profiles(username, avatar_url, bio, department, acquired_qualifications)')
+        .select('*, profiles(username, avatar_url, bio, department, acquired_qualifications, studying_categories)')
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
 
@@ -127,7 +128,12 @@ export function PostDetailPage() {
     <div className="container mx-auto py-8 max-w-3xl">
       <Card className="mb-8">
         <CardHeader className="flex flex-row items-center gap-4">
-          <UserProfileCard profile={post.profiles}>
+          <UserProfileCard
+            profile={post.profiles ? {
+              ...post.profiles,
+              studying_qualifications: post.profiles.studying_categories,
+            } : null}
+          >
             <Avatar className="h-12 w-12 cursor-pointer">
               <AvatarImage src={!post.is_anonymous ? post.profiles?.avatar_url ?? undefined : undefined} />
               <AvatarFallback className="text-xl">
@@ -186,7 +192,12 @@ export function PostDetailPage() {
         {comments.length > 0 ? (
           comments.map(comment => (
             <div key={comment.id} className="flex gap-4">
-              <UserProfileCard profile={comment.profiles}>
+              <UserProfileCard
+              profile={comment.profiles ? {
+                ...comment.profiles,
+                studying_qualifications: comment.profiles.studying_categories,
+              } : null}
+            >
                 <Avatar className="h-10 w-10 cursor-pointer">
                   <AvatarImage src={!comment.is_anonymous ? comment.profiles?.avatar_url ?? undefined : undefined} />
                   <AvatarFallback>

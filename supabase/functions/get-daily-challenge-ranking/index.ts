@@ -38,22 +38,20 @@ Deno.serve(async (req)=>{
 
     const { data: profilesData, error: profilesError } = await supabaseClient
       .from('profiles')
-      .select('id, username, avatar_url, bio, department, acquired_qualifications')
+      .select('id, username, avatar_url, bio, department, acquired_qualifications, studying_categories')
       .in('id', userIds);
 
     if (profilesError) throw profilesError;
 
-    // userIdsの配列を一度に渡して、全ユーザーの統計情報を取得
     const { data: statsList, error: statsErr } = await supabaseClient.rpc('get_user_stats_for_ranking', { p_user_ids: userIds });
     if (statsErr) throw statsErr;
 
     const profilesMap = new Map(profilesData.map(profile => [profile.id, profile]));
-    // 取得した統計情報リストを、userIdをキーにしたマップに変換
     const statsMap = new Map((statsList || []).map(stats => [stats.user_id, stats]));
 
     const rankedUsers = data.map((result) => {
       const stats = statsMap.get(result.user_id) || { total_answers: 0, correct_answers: 0 };
-      const profile = profilesMap.get(result.user_id) || { username: '名無しさん', avatar_url: null, bio: null, department: null, acquired_qualifications: null };
+      const profile = profilesMap.get(result.user_id) || { username: '名無しさん', avatar_url: null, bio: null, department: null, acquired_qualifications: null, studying_categories: [] };
       
       return {
         userId: result.user_id,
@@ -64,6 +62,7 @@ Deno.serve(async (req)=>{
         bio: profile.bio,
         department: profile.department,
         acquired_qualifications: profile.acquired_qualifications,
+        studying_categories: profile.studying_categories ?? [],
         total_answers: stats.total_answers,
         correct_answers: stats.correct_answers,
       };

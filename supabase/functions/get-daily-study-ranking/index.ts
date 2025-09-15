@@ -13,7 +13,6 @@ Deno.serve(async (req) => {
       const body = await req.json();
       categories = body.categories || [];
     } catch (e) {
-      // リクエストボディが空、またはJSONでない場合はカテゴリでの絞り込みを行わない
       categories = [];
     }
 
@@ -51,18 +50,20 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data: profilesWithFallback, error: profilesErr } = await sb.rpc('get_profiles_with_fallback_name', { p_user_ids: userIds });
+    const { data: profilesData, error: profilesErr } = await sb
+      .from('profiles')
+      .select('id, username, avatar_url, bio, department, acquired_qualifications, studying_categories')
+      .in('id', userIds);
     if (profilesErr) throw profilesErr;
-    const profilesById = (profilesWithFallback || []).reduce((acc, p) => {
+
+    const profilesById = (profilesData || []).reduce((acc, p) => {
       acc[p.id] = p;
       return acc;
     }, {});
 
-    // userIdsの配列を一度に渡して、全ユーザーの統計情報を取得
     const { data: statsList, error: statsErr } = await sb.rpc('get_user_stats_for_ranking', { p_user_ids: userIds });
     if (statsErr) throw statsErr;
 
-    // 取得した統計情報リストを、userIdをキーにしたマップに変換
     const statsMap = (statsList || []).reduce((acc, stats) => {
       acc[stats.user_id] = stats;
       return acc;
@@ -74,11 +75,12 @@ Deno.serve(async (req) => {
       return {
         userId: r.userId,
         count: r.count,
-        username: profile?.display_name ?? '名無しさん',
+        username: profile?.username ?? '名無しさん',
         avatar_url: profile?.avatar_url ?? null,
         bio: profile?.bio ?? null,
         department: profile?.department ?? null,
         acquired_qualifications: profile?.acquired_qualifications ?? null,
+        studying_categories: profile?.studying_categories ?? [],
         total_answers: stats.total_answers,
         correct_answers: stats.correct_answers,
         score: 0,

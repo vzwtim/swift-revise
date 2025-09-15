@@ -20,6 +20,7 @@ type Profile = {
   bio: string | null;
   department: string | null;
   acquired_qualifications: string[] | null;
+  studying_qualifications: string[] | null; // 新しく追加
 };
 
 interface UserProfileCardProps {
@@ -90,6 +91,21 @@ export function UserProfileCard({
           <div className="flex flex-wrap gap-2">
             {profile.acquired_qualifications.map((qual) => (
               <Badge key={qual} variant="secondary">{qual}</Badge>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 学習中の資格 (新しく追加) */}
+      {profile.studying_qualifications && profile.studying_qualifications.length > 0 && (
+        <div className="space-y-2">
+          <h5 className="text-sm font-semibold flex items-center">
+            <Award className="mr-2 h-4 w-4" />
+            学習中の資格
+          </h5>
+          <div className="flex flex-wrap gap-2">
+            {profile.studying_qualifications.map((qual) => (
+              <Badge key={qual} variant="outline">{qual}</Badge>
             ))}
           </div>
         </div>
