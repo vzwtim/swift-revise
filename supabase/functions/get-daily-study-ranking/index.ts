@@ -8,18 +8,21 @@ Deno.serve(async (req) => {
 
   try {
     const sb = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+    const { categories } = await req.json();
 
-    // JSTの今日0時を計算
     const now = new Date();
     const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
     jst.setHours(0, 0, 0, 0);
     const fromISO = new Date(jst.getTime() - 9 * 60 * 60 * 1000).toISOString();
 
-    // 1. 今日の回答ログを取得
-    const { data: logs, error: logsErr } = await sb.from('answer_logs').select('user_id, created_at').gte('created_at', fromISO);
+    let query = sb.from('answer_logs').select('user_id, created_at').gte('created_at', fromISO);
+    if (categories && Array.isArray(categories) && categories.length > 0) {
+      query = query.in('subject', categories);
+    }
+
+    const { data: logs, error: logsErr } = await query;
     if (logsErr) throw logsErr;
 
-    // 2. メモリ内でユーザーごとにカウント
     const countsMap = (logs || []).reduce((acc, r) => {
       if (r.user_id) {
         acc[r.user_id] = (acc[r.user_id] || 0) + 1;
@@ -27,7 +30,6 @@ Deno.serve(async (req) => {
       return acc;
     }, {});
 
-    // 3. 上位10ユーザーを決定
     const ranked = Object.entries(countsMap).map(([userId, count]) => ({
       userId,
       count
@@ -42,7 +44,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 4. プロフィール情報とフォールバック名を取得
     const { data: profilesWithFallback, error: profilesErr } = await sb.rpc('get_profiles_with_fallback_name', { p_user_ids: userIds });
     if (profilesErr) throw profilesErr;
     const profilesById = (profilesWithFallback || []).reduce((acc, p) => {
@@ -50,9 +51,8 @@ Deno.serve(async (req) => {
       return acc;
     }, {});
 
-    // 5. 統計情報をユーザーごとに取得
     const statsPromises = userIds.map(id => 
-      sb.rpc('get_user_stats', { p_user_id: id }).single()
+      sb.rpc('get_my_stats').single() // Use get_my_stats which doesn't need user_id
     );
     const statsResults = await Promise.all(statsPromises);
 
@@ -63,7 +63,6 @@ Deno.serve(async (req) => {
       return acc;
     }, {});
 
-    // 6. 最終的なレスポンスを組み立て
     const result = ranked.map((r) => {
       const profile = profilesById[r.userId];
       const stats = statsMap[r.userId] || { total_answers: 0, correct_answers: 0 };

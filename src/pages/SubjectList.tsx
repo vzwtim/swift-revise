@@ -1,7 +1,7 @@
 import { SubjectCard } from "@/components/subject-card";
 import { RankingCard } from "@/components/ranking-card";
 import { subjects } from "@/data/questions";
-import { GraduationCap, BarChart3, RefreshCw, BookOpen, LogIn, LogOut, User, CalendarCheck, MessageSquare } from "lucide-react";
+import { GraduationCap, BarChart3, RefreshCw, BookOpen, LogIn, LogOut, User, CalendarCheck, MessageSquare, Check } from "lucide-react";
 import { DailyProgressChart } from "@/components/daily-progress-chart";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -53,7 +53,6 @@ export default function SubjectList() {
 
       if (user) {
         try {
-          // Fetch all answer logs for the user to calculate stats client-side
           const { data, error } = await supabase
             .from('answer_logs')
             .select('is_correct')
@@ -103,7 +102,11 @@ export default function SubjectList() {
     );
   };
 
-  const updatedSubjects = subjects.map(subject => {
+  const filteredSubjects = subjects.filter(subject => 
+    !profile || !profile.studying_categories || profile.studying_categories.includes(subject.category)
+  );
+
+  const updatedSubjects = filteredSubjects.map(subject => {
     const subjectQuestionIds = new Set(
       subject.units.flatMap((u) => u.questions.map((q) => q.id))
     );
@@ -132,7 +135,6 @@ export default function SubjectList() {
     setDailyTarget(value);
   };
 
-  // Group subjects by category
   const groupedSubjects = updatedSubjects.reduce((acc, subject) => {
     const category = subject.category || 'uncategorized';
     if (!acc[category]) {
@@ -158,7 +160,6 @@ export default function SubjectList() {
             </div>
             <div>
               <h1 className="text-xl font-bold">StudyFlow</h1>
-              {/* <p className="text-sm text-muted-foreground">不動産ファイナンス学習</p> */}
             </div>
           </div>
           <div className="flex items-center gap-4 text-sm">
@@ -188,6 +189,20 @@ export default function SubjectList() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">学習中の資格</DropdownMenuLabel>
+                  {profile?.studying_categories && profile.studying_categories.length > 0 ? (
+                    profile.studying_categories.map(catId => (
+                      <DropdownMenuItem key={catId} className="cursor-default">
+                        <Check className="mr-2 h-4 w-4" />
+                        <span>{categoryDisplayNames[catId] || catId}</span>
+                      </DropdownMenuItem>
+                    ))
+                  ) : (
+                    <DropdownMenuItem disabled>
+                      <span className="text-xs text-muted-foreground">カテゴリ未選択</span>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate('/forum')} className="cursor-pointer">
                     <MessageSquare className="mr-2 h-4 w-4" />
@@ -244,21 +259,32 @@ export default function SubjectList() {
               </Button>
             </div>
             <div className="space-y-12">
-              {Object.entries(groupedSubjects).map(([category, subjectsInCategory]) => (
-                <div key={category}>
-                  <h3 className="text-xl font-bold mb-4 border-b pb-2">{categoryDisplayNames[category] || category}</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
-                    {subjectsInCategory.map((subject) => (
-                      <SubjectCard
-                        key={subject.id}
-                        subject={subject}
-                        progressCounts={subject.progressCounts}
-                        onStartLearning={handleStartLearning}
-                      />
-                    ))}
+              {Object.keys(groupedSubjects).length > 0 ? (
+                Object.entries(groupedSubjects).map(([category, subjectsInCategory]) => (
+                  <div key={category}>
+                    <h3 className="text-xl font-bold mb-4 border-b pb-2">{categoryDisplayNames[category] || category}</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+                      {subjectsInCategory.map((subject) => (
+                        <SubjectCard
+                          key={subject.id}
+                          subject={subject}
+                          progressCounts={subject.progressCounts}
+                          onStartLearning={handleStartLearning}
+                        />
+                      ))}
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center py-12 bg-background/30 rounded-xl">
+                  <h3 className="text-xl font-bold mb-2">学習カテゴリが選択されていません</h3>
+                  <p className="text-muted-foreground mb-6">プロフィール編集画面から、学習したいカテゴリを選択してください。</p>
+                  <Button onClick={() => navigate('/profile')}>
+                    <User className="mr-2 h-4 w-4" />
+                    プロフィールを編集
+                  </Button>
                 </div>
-              ))}
+              )}
             </div>
             <div className="mt-12">
               <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
@@ -285,7 +311,7 @@ export default function SubjectList() {
       <BulkStudyDialog
         open={isBulkStudyOpen}
         onOpenChange={setIsBulkStudyOpen}
-        subjects={subjects}
+        subjects={filteredSubjects} // Pass filtered subjects
         onStartBulkStudy={handleStartReview}
       />
     </div>

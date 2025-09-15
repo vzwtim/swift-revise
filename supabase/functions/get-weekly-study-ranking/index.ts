@@ -8,18 +8,22 @@ Deno.serve(async (req) => {
 
   try {
     const sb = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+    const { categories } = await req.json();
 
-    // JSTの今週月曜0時 → DBはUTCなので補正してISOに
     const now = new Date();
     const jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-    const dayOfWeek = jstNow.getDay(); // Sunday = 0, Monday = 1
+    const dayOfWeek = jstNow.getDay();
     const diff = jstNow.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
     const mondayJST = new Date(jstNow.setDate(diff));
     mondayJST.setHours(0, 0, 0, 0);
     const fromISO = new Date(mondayJST.getTime() - 9 * 60 * 60 * 1000).toISOString();
 
-    const { data: logs, error: logsErr } = await sb.from('answer_logs').select('user_id, created_at').gte('created_at', fromISO);
+    let query = sb.from('answer_logs').select('user_id, created_at').gte('created_at', fromISO);
+    if (categories && Array.isArray(categories) && categories.length > 0) {
+      query = query.in('subject', categories);
+    }
 
+    const { data: logs, error: logsErr } = await query;
     if (logsErr) throw logsErr;
 
     const countsMap = (logs || []).reduce((acc, r) => {

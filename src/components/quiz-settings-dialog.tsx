@@ -23,7 +23,7 @@ interface QuizSettingsDialogProps {
 }
 
 const ALL_LEVELS: MasteryLevel[] = ['Perfect', 'Great', 'Good', 'Bad', 'Miss', 'New'];
-const DEFAULT_LEVELS: MasteryLevel[] = ['Great', 'Good', 'Bad', 'Miss', 'New'];
+const DEFAULT_LEVELS: MasteryLevel[] = ['Perfect', 'Great', 'Good', 'Bad', 'Miss', 'New'];
 
 export function QuizSettingsDialog({ open, onOpenChange, targetId, title, description, selectedUnitIds = [] }: QuizSettingsDialogProps) {
   const navigate = useNavigate();

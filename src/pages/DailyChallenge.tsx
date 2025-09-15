@@ -8,16 +8,25 @@ import { ArrowLeft, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-// Function to get 10 random questions
-const getDailyQuestions = (): Question[] => {
-  const allQuestions = subjects.flatMap((s) => s.units.flatMap((u) => u.questions));
+// Function to get 10 random questions from selected categories
+const getDailyQuestions = (studyingCategories: string[] | undefined | null): Question[] => {
+  const filteredSubjects = studyingCategories && studyingCategories.length > 0
+    ? subjects.filter(s => studyingCategories.includes(s.category))
+    : subjects; // Fallback to all subjects if none are selected
+
+  const allQuestions = filteredSubjects.flatMap((s) => s.units.flatMap((u) => u.questions));
+  
+  if (allQuestions.length === 0) {
+    return [];
+  }
+
   const shuffled = allQuestions.sort(() => 0.5 - Math.random());
   return shuffled.slice(0, 10);
 };
 
 export default function DailyChallenge() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
@@ -27,9 +36,12 @@ export default function DailyChallenge() {
   const [totalTime, setTotalTime] = useState<number | null>(null);
 
   useEffect(() => {
-    setQuestions(getDailyQuestions());
-    setStartTime(Date.now());
-  }, []);
+    // Wait for profile to be loaded
+    if (!authLoading) {
+      setQuestions(getDailyQuestions(profile?.studying_categories));
+      setStartTime(Date.now());
+    }
+  }, [authLoading, profile]);
 
   const handleAnswer = (answer: number, timeSpent: number) => {
     const currentQuestion = questions[currentQuestionIndex];
@@ -72,13 +84,29 @@ export default function DailyChallenge() {
   };
 
   const handleRestart = () => {
-    setQuestions(getDailyQuestions());
+    setQuestions(getDailyQuestions(profile?.studying_categories));
     setCurrentQuestionIndex(0);
     setAnswers([]);
     setShowResult(false);
     setIsComplete(false);
     setStartTime(Date.now());
   };
+
+  if (authLoading) {
+    return <p>Loading...</p>; // Or a proper skeleton loader
+  }
+
+  if (questions.length === 0) {
+    return (
+      <div className="min-h-screen gradient-learning flex items-center justify-center">
+        <div className="text-center p-8">
+          <h2 className="text-2xl font-bold mb-2">問題が見つかりません</h2>
+          <p className="text-muted-foreground mb-6">選択中の学習カテゴリに問題がないか、カテゴリが選択されていません。</p>
+          <Button onClick={() => navigate('/profile')} className="w-full max-w-xs gradient-primary">プロフィール設定に移動</Button>
+        </div>
+      </div>
+    );
+  }
 
   if (isComplete) {
     const correctAnswers = answers.filter(a => a.isCorrect).length;
