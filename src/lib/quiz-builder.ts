@@ -88,6 +88,15 @@ export function buildQuizQuestions(
       questionsToShow = subjectQuestions.filter(filterByLevel);
       pageTitle = `${foundSubject.name} の復習`;
       pageDescription = "選択した習熟度の問題";
+    } else {
+      const debugData = {
+        subjects_imported: Array.isArray(subjects) ? `OK (${subjects.length} items)` : `FAILED (type: ${typeof subjects})`,
+        first_subject_id: subjects?.[0]?.id,
+        last_subject_id: subjects?.[subjects.length - 1]?.id,
+      };
+      pageTitle = "エラー: 科目が見つかりません";
+      const availableIds = Array.isArray(subjects) ? subjects.map(s => s.id) : ["(subjects is not an array)"];
+      pageDescription = `[DEBUG] ID '${subjectId}' が見つかりませんでした。利用可能なIDリスト: [${availableIds.join(", ")}] --- Import Status: ${JSON.stringify(debugData)}`;
     }
   } else {
     const foundUnit = subjects
