@@ -10,19 +10,26 @@ export async function saveAnswerLog(answer: UserAnswer, question: Question, sess
     return;
   }
 
-  const { error } = await supabase
-    .from(TABLE_NAME)
-    .insert({
-      user_id: user.id,
-      question_id: question.id,
-      is_correct: answer.isCorrect,
-      subject: question.category, // Use category from question
-      session_id: sessionId,
-      grade: answer.grade,
-    });
+  try {
+    const { error } = await supabase
+      .from(TABLE_NAME)
+      .insert({
+        user_id: user.id,
+        session_id: sessionId,
+        question_id: question.id,
+        is_correct: answer.isCorrect,
+        grade: answer.grade,
+        time_spent: answer.timeSpent,
+        subject: question.category,
+      });
 
-  if (error) {
-    console.error("Failed to save answer log", error);
+    if (error) {
+      console.error("Failed to save answer log", error);
+      throw error;
+    }
+  } catch (error) {
+    // エラーを呼び出し元に伝える
+    throw error;
   }
 }
 
