@@ -86,9 +86,17 @@ export default function SubjectList() {
   };
 
   const handleStartLearning = (subjectId: string) => {
+    const subject = subjects.find(s => s.id === subjectId);
+    if (!subject || subject.units.length === 0) {
+      console.error("Subject or units not found for ID:", subjectId);
+      return;
+    }
+    // その科目の最初の単元のIDを取得
+    const firstUnitId = subject.units[0].id;
+    
     handleOpenSettings(
-      `review-${subjectId}`,
-      `${subjects.find(s => s.id === subjectId)?.name} の学習`,
+      firstUnitId, // 単元のIDを渡す
+      `${subject.name} の学習`,
       '出題範囲の習熟度を選択してください。'
     );
   };
