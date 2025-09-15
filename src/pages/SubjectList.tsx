@@ -133,6 +133,11 @@ export default function SubjectList() {
     const subjectQuestionIds = new Set(
       subject.units.flatMap((u) => u.questions.map((q) => q.id))
     );
+
+    // === デバッグログを追加 ===
+    console.log(`[集計チェック] 教科: ${subject.name}, 認識している問題数: ${subjectQuestionIds.size}`);
+    // ========================
+
     const subjectCards = Object.values(cards).filter((c) =>
       subjectQuestionIds.has(c.questionId)
     );

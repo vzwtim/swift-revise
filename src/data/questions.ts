@@ -46,10 +46,7 @@ const parseCsv = (
   return rows
     .map((row) => {
       const match = row.match(/^([^,]+),([^,]+),(.*),(TRUE|FALSE),(.*)$/);
-      if (!match) {
-        console.error('Failed to parse row:', row);
-        return null;
-      }
+      if (!match) return null;
       const [, problemNo, subId, stem, correct, explanation] = match;
       const [subjectCode] = problemNo.split('-');
       const subjectName = subjectMap[subjectCode];
