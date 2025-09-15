@@ -8,7 +8,14 @@ Deno.serve(async (req) => {
 
   try {
     const sb = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
-    const { categories } = await req.json();
+    let categories = [];
+    try {
+      const body = await req.json();
+      categories = body.categories || [];
+    } catch (e) {
+      // リクエストボディが空、またはJSONでない場合はカテゴリでの絞り込みを行わない
+      categories = [];
+    }
 
     const now = new Date();
     const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
