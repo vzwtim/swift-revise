@@ -66,6 +66,12 @@ export default function Subject() {
     subjectQuestionIds.has(c.questionId)
   );
 
+  console.log("Subject ID:", id);
+  console.log("Subject Question IDs (first 5):",[...subjectQuestionIds].slice(0,5));
+  console.log("All Loaded Cards (first 5 questionIds):",[...Object.keys(cards)].slice(0,5));
+  console.log("Filtered Subject Cards count:", subjectCards.length);
+  console.log("Filtered Subject Cards (first 5):",[...subjectCards].slice(0,5));
+
   const MASTERY_ORDER: MasteryLevel[] = ['Perfect', 'Great', 'Good', 'Bad', 'Miss', 'New'];
 
   const progressCounts: Partial<Record<MasteryLevel, number>> = {};

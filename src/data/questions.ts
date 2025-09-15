@@ -69,8 +69,13 @@ const parseCsv = (
 export const aresQuestions = parseCsv(aresCsv, ARES_SUBJECT_MAP, 'ares');
 export const takkenQuestions = parseCsv(takkenCsv, TAKKEN_SUBJECT_MAP, 'takken');
 
+console.log("aresQuestions count:", aresQuestions.length);
+console.log("takkenQuestions count:", takkenQuestions.length);
+
 // すべての問題を結合
 export const allQuestions = [...aresQuestions, ...takkenQuestions];
+
+console.log("allQuestions count:", allQuestions.length);
 
 // 科目リスト生成ロジックを汎用化
 const createSubjects = (
@@ -106,6 +111,11 @@ const createSubjects = (
 const aresSubjects = createSubjects(ARES_SUBJECT_MAP, aresQuestions, 'ares');
 const takkenSubjects = createSubjects(TAKKEN_SUBJECT_MAP, takkenQuestions, 'takken');
 
+console.log("aresSubjects count:", aresSubjects.length);
+console.log("takkenSubjects count:", takkenSubjects.length);
+
 // すべての科目を結合
 export const subjects = [...aresSubjects, ...takkenSubjects];
+
+console.log("Total subjects count:", subjects.length);
 
