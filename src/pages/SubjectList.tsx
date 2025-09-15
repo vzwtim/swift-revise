@@ -54,6 +54,14 @@ export default function SubjectList() {
     const fetchData = async () => {
       setIsLoading(true);
       const loadedCards = await loadAllCards();
+
+      // === デバッグログを追加 ===
+      console.log('--- DBから読み込んだ全カードデータ ---');
+      console.log(loadedCards);
+      const takkenCardIds = Object.keys(loadedCards).filter(id => id.startsWith('takken-'));
+      console.log(`読み込んだ宅建カードID (${takkenCardIds.length}件):`, takkenCardIds);
+      // ============================
+
       setCards(loadedCards);
 
       if (user) {
