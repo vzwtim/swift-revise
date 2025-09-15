@@ -28,9 +28,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 
+const AVAILABLE_CATEGORIES = [
+  { id: 'ares', name: 'ARES 不動産ファイナンス' },
+  { id: 'takken', name: '宅地建物取引士' },
+];
+
 export default function SubjectList() {
   const navigate = useNavigate();
-  const { session, user, profile, loading: authLoading } = useAuth();
+  const { session, user, profile, loading: authLoading, updateStudyingCategories } = useAuth();
   const [cards, setCards] = useState<{ [questionId: string]: CardType }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [target, setTarget] = useState<number>(getDailyTarget());
@@ -91,11 +96,10 @@ export default function SubjectList() {
       console.error("Subject or units not found for ID:", subjectId);
       return;
     }
-    // その科目の最初の単元のIDを取得
     const firstUnitId = subject.units[0].id;
     
     handleOpenSettings(
-      firstUnitId, // 単元のIDを渡す
+      firstUnitId,
       `${subject.name} の学習`,
       '出題範囲の習熟度を選択してください。'
     );
@@ -108,6 +112,17 @@ export default function SubjectList() {
       'まとめて学習',
       '選択した単元の問題をまとめて学習します。'
     );
+  };
+
+  const handleCategoryToggle = async (categoryId: string) => {
+    if (!profile || !profile.studying_categories || !updateStudyingCategories) return;
+
+    const currentCategories = profile.studying_categories;
+    const newCategories = currentCategories.includes(categoryId)
+      ? currentCategories.filter(c => c !== categoryId)
+      : [...currentCategories, categoryId];
+
+    await updateStudyingCategories(newCategories);
   };
 
   const filteredSubjects = subjects.filter(subject => 
@@ -199,18 +214,23 @@ export default function SubjectList() {
                   <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">学習中の資格</DropdownMenuLabel>
-                  {profile?.studying_categories && profile.studying_categories.length > 0 ? (
-                    profile.studying_categories.map(catId => (
-                      <DropdownMenuItem key={catId} className="cursor-default">
-                        <Check className="mr-2 h-4 w-4" />
-                        <span>{categoryDisplayNames[catId] || catId}</span>
-                      </DropdownMenuItem>
-                    ))
-                  ) : (
-                    <DropdownMenuItem disabled>
-                      <span className="text-xs text-muted-foreground">カテゴリ未選択</span>
+                  {AVAILABLE_CATEGORIES.map(category => (
+                    <DropdownMenuItem
+                      key={category.id}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleCategoryToggle(category.id);
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <div className="w-6 mr-2 flex items-center justify-center">
+                        {profile?.studying_categories?.includes(category.id) && (
+                          <Check className="h-4 w-4" />
+                        )}
+                      </div>
+                      <span>{category.name}</span>
                     </DropdownMenuItem>
-                  )}
+                  ))}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate('/forum')} className="cursor-pointer">
                     <MessageSquare className="mr-2 h-4 w-4" />

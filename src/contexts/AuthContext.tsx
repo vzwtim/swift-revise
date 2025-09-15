@@ -9,6 +9,7 @@ export interface Profile {
   bio: string | null;
   department: string | null;
   acquired_qualifications: string[] | null;
+  studying_categories: string[] | null;
 }
 
 interface AuthContextType {
@@ -16,6 +17,7 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null; // Add profile to the context type
   loading: boolean;
+  updateStudyingCategories: (newCategories: string[]) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -23,6 +25,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null, // Add profile to the context
   loading: true,
+  updateStudyingCategories: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -32,8 +35,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
-
     const fetchProfile = async (user: User) => {
       const { data, error } = await supabase
         .from('profiles')
@@ -75,11 +76,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
+  const updateStudyingCategories = async (newCategories: string[]) => {
+    if (!user) {
+      console.error("Cannot update categories without a user.");
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ studying_categories: newCategories })
+        .eq('id', user.id)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        setProfile(data);
+      }
+    } catch (error) {
+      console.error("Error updating studying categories:", error);
+    }
+  };
+
   const value = {
     session,
     user,
-    profile, // Add profile to the context value
+    profile,
     loading,
+    updateStudyingCategories,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
