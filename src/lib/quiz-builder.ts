@@ -1,7 +1,7 @@
 
 import { subjects } from "@/data/questions";
 import { SpacedRepetitionScheduler } from "@/lib/scheduler";
-import { Card, Question, MasteryLevel } from "@/lib/types";
+import { Card, Question, MasteryLevel, ALL_MASTERY_LEVELS } from "@/lib/types";
 
 export async function initializeCards(
   allCards: { [questionId: string]: Card }
@@ -49,7 +49,8 @@ export function buildQuizQuestions(
       return true; // Skip filtering
     }
     const card = allCards[q.id];
-    const level = card?.masteryLevel || "New";
+    // masteryLevel が存在しない、または MasteryLevel 型に含まれない値だった場合、"New" として扱う
+    const level = card && ALL_MASTERY_LEVELS.includes(card.masteryLevel) ? card.masteryLevel : "New";
     return selectedLevels.includes(level);
   };
 

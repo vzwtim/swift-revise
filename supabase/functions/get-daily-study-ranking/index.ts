@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     }, {});
 
     const statsPromises = userIds.map(id => 
-      sb.rpc('get_my_stats').single() // Use get_my_stats which doesn't need user_id
+      sb.rpc('get_user_stats', { user_id: id }).single()
     );
     const statsResults = await Promise.all(statsPromises);
 

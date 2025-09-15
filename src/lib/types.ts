@@ -27,6 +27,8 @@ export interface Card {
 
 export type MasteryLevel = "Perfect" | "Great" | "Good" | "Bad" | "Miss" | "New";
 
+export const ALL_MASTERY_LEVELS: MasteryLevel[] = ["Perfect", "Great", "Good", "Bad", "Miss", "New"];
+
 export interface QuestionStats {
   correct: number;
   total: number;

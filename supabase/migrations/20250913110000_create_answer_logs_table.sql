@@ -1,4 +1,4 @@
-CREATE TABLE public.answer_logs (
+CREATE TABLE IF NOT EXISTS public.answer_logs (
     id bigint NOT NULL PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     question_id bigint NOT NULL,
