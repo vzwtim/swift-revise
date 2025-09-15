@@ -57,15 +57,13 @@ Deno.serve(async (req) => {
       }, {});
     }
 
-    const statsPromises = userIds.map(id => 
-      sb.rpc('get_user_stats', { p_user_id: id }).single()
-    );
-    const statsResults = await Promise.all(statsPromises);
+    // userIdsの配列を一度に渡して、全ユーザーの統計情報を取得
+    const { data: statsList, error: statsErr } = await sb.rpc('get_user_stats_for_ranking', { p_user_ids: userIds });
+    if (statsErr) throw statsErr;
 
-    const statsMap = statsResults.reduce((acc, result, index) => {
-      if (result.data) {
-        acc[userIds[index]] = result.data;
-      }
+    // 取得した統計情報リストを、userIdをキーにしたマップに変換
+    const statsMap = (statsList || []).reduce((acc, stats) => {
+      acc[stats.user_id] = stats;
       return acc;
     }, {});
 

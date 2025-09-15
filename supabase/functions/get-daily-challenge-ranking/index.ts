@@ -43,18 +43,13 @@ Deno.serve(async (req)=>{
 
     if (profilesError) throw profilesError;
 
-    const statsPromises = userIds.map(id => 
-      supabaseClient.rpc('get_user_stats', { p_user_id: id }).single()
-    );
-    const statsResults = await Promise.all(statsPromises);
+    // userIdsの配列を一度に渡して、全ユーザーの統計情報を取得
+    const { data: statsList, error: statsErr } = await supabaseClient.rpc('get_user_stats_for_ranking', { p_user_ids: userIds });
+    if (statsErr) throw statsErr;
 
     const profilesMap = new Map(profilesData.map(profile => [profile.id, profile]));
-    const statsMap = new Map();
-    statsResults.forEach((result, index) => {
-      if (result.data) {
-        statsMap.set(userIds[index], result.data);
-      }
-    });
+    // 取得した統計情報リストを、userIdをキーにしたマップに変換
+    const statsMap = new Map((statsList || []).map(stats => [stats.user_id, stats]));
 
     const rankedUsers = data.map((result) => {
       const stats = statsMap.get(result.user_id) || { total_answers: 0, correct_answers: 0 };
