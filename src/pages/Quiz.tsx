@@ -125,7 +125,7 @@ export default function Quiz() {
 
     setAnswers((prev) => [...prev, userAnswer]);
     setShowResult(true);
-    void saveAnswerLog(userAnswer, currentQuestion);
+    void saveAnswerLog(userAnswer, currentQuestion, sessionId);
 
     const originalCard = cards[currentQuestion.id];
     if (originalCard) {

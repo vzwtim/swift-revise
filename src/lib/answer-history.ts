@@ -3,7 +3,7 @@ import { UserAnswer, Question } from "@/lib/types";
 
 const TABLE_NAME = "answer_logs";
 
-export async function saveAnswerLog(answer: UserAnswer, question: Question) {
+export async function saveAnswerLog(answer: UserAnswer, question: Question, sessionId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     console.log("User not logged in. Answer log not saved to DB.");
@@ -17,6 +17,7 @@ export async function saveAnswerLog(answer: UserAnswer, question: Question) {
       question_id: question.id,
       is_correct: answer.isCorrect,
       subject: question.category, // Use category from question
+      session_id: sessionId,
     });
 
   if (error) {
