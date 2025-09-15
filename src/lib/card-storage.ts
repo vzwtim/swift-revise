@@ -9,21 +9,43 @@ export const loadAllCards = async (): Promise<{ [questionId: string]: Card }> =>
   }
 
   try {
-    console.log("loadAllCards: Fetching cards for user:", user.id);
-    const { data: cardsFromDb, error } = await supabase
-      .from('cards')
-      .select('*')
-      .eq('user_id', user.id)
-      .limit(5000);
+    console.log("loadAllCards: Fetching all cards for user with pagination:", user.id);
+    
+    let allCardsFromDb: any[] = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
 
-    if (error) {
-      console.error("loadAllCards: Error loading cards from DB:", error);
-      throw error;
+    while(hasMore) {
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
+      
+      const { data: pageOfCards, error } = await supabase
+        .from('cards')
+        .select('*')
+        .eq('user_id', user.id)
+        .range(from, to);
+
+      if (error) {
+        console.error(`loadAllCards: Error loading cards from DB (page ${page}):`, error);
+        throw error;
+      }
+
+      if (pageOfCards && pageOfCards.length > 0) {
+        allCardsFromDb.push(...pageOfCards);
+        if (pageOfCards.length < pageSize) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      } else {
+        hasMore = false;
+      }
     }
 
-    console.log("loadAllCards: Cards fetched from DB:", cardsFromDb);
+    console.log(`loadAllCards: Total cards fetched from DB: ${allCardsFromDb.length}`);
 
-    const cards: Card[] = (cardsFromDb || []).map(dbCard => ({
+    const cards: Card[] = (allCardsFromDb || []).map(dbCard => ({
       questionId: dbCard.question_id,
       interval: dbCard.interval,
       repetitions: dbCard.repetitions,
@@ -43,7 +65,7 @@ export const loadAllCards = async (): Promise<{ [questionId: string]: Card }> =>
       return acc;
     }, {} as { [questionId: string]: Card });
 
-    console.log("loadAllCards: Mapped cards:", cardsMap);
+    console.log("loadAllCards: Mapped cards count:", Object.keys(cardsMap).length);
     return cardsMap;
 
   } catch (error) {
@@ -60,7 +82,6 @@ export const saveCards = async (cardsToSave: Card[]) => {
   }
 
   try {
-    console.log("saveCards: Saving cards for user:", user.id, "Cards to save count:", cardsToSave.length);
     const recordsToUpsert = cardsToSave.map(card => ({
       user_id: user.id,
       question_id: card.questionId,
@@ -76,8 +97,6 @@ export const saveCards = async (cardsToSave: Card[]) => {
       total_count: card.total_count,
     }));
 
-    console.log("saveCards: Records to upsert:", recordsToUpsert);
-
     const { error } = await supabase.from('cards').upsert(recordsToUpsert, {
       onConflict: 'user_id,question_id'
     });
@@ -86,7 +105,6 @@ export const saveCards = async (cardsToSave: Card[]) => {
       console.error("saveCards: Error saving cards to DB:", error);
       throw error;
     }
-    console.log("saveCards: Cards saved successfully.");
   } catch (error) {
     console.error("saveCards: Error in saveCards catch block:", error);
   }
