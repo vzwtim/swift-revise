@@ -23,6 +23,7 @@ export interface Card {
   masteryLevel: MasteryLevel;
   correct_count: number;
   total_count: number;
+  user_id?: string;
 }
 
 export type MasteryLevel = "Perfect" | "Great" | "Good" | "Bad" | "Miss" | "New";
