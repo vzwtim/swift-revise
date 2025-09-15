@@ -1,29 +1,31 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { allQuestions } from "@/data/questions";
-
 import { QuizCard } from "@/components/quiz-card";
 import { Button } from "@/components/ui/button";
-
 import { SpacedRepetitionScheduler } from "@/lib/scheduler";
 import { UserAnswer, Card, Question, Unit } from "@/lib/types";
 import { ArrowLeft, RotateCcw, Home } from "lucide-react";
 import { saveAnswerLog } from "@/lib/answer-history";
 import { initializeCards, buildQuizQuestions } from "@/lib/quiz-builder";
-
-// import {
-//   getIncompleteQuiz,
-//   saveIncompleteQuiz,
-//   clearIncompleteQuiz,
-// } from "@/lib/quiz-progress";
+import {
+  getLastQuestionIndex,
+  saveLastQuestionIndex,
+  clearLastQuestionIndex,
+} from "@/lib/quiz-progress";
 import { loadAllCards, saveCards } from "@/lib/card-storage";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function Quiz() {
   const { unitId } = useParams<{ unitId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
@@ -34,13 +36,8 @@ export default function Quiz() {
   const [unit, setUnit] = useState<Unit | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentCard, setCurrentCard] = useState<Card | null>(null);
-  const [showNoUnitsError, setShowNoUnitsError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [feedback, setFeedback] = useState<{ show: boolean; correct: boolean } | null>(null);
-
-  // const [showResumePrompt, setShowResumePrompt] = useState(false);
-  // const [incompleteSession, setIncompleteSession] = useState<{ questionIds: number[], currentIndex: number } | null>(null);
-
 
   useEffect(() => {
     if (!unitId) return;
@@ -55,24 +52,26 @@ export default function Quiz() {
       }
       setCards(currentCardsMap);
 
-      // 中断・再開機能を無効化
-      // const resumeFromState = location.state?.incompleteQuiz;
-      // if (resumeFromState) { ... }
-
-      // 中断・再開機能を無効化
-      // const savedSession = getIncompleteQuiz(unitId);
-      // if (savedSession && savedSession.questionIds.length > 0) { ... }
-
-      // 新規クイズ作成
       const { questionsToShow, pageTitle, pageDescription, showNoUnitsError } = buildQuizQuestions(unitId, location.search, currentCardsMap);
+      
       if (showNoUnitsError) {
-        setShowNoUnitsError(true);
+        setQuestions([]);
         setIsLoading(false);
         return;
       }
+
       setUnit({ id: unitId, name: pageTitle, description: pageDescription, subjectId: "", questions: questionsToShow, dueCards: 0, newCards: questionsToShow.length });
       setQuestions(questionsToShow);
-      setCurrentQuestionIndex(0);
+
+      if (questionsToShow.length > 0) {
+        const lastIndex = getLastQuestionIndex(unitId);
+        if (lastIndex !== null && lastIndex < questionsToShow.length - 1) {
+          setCurrentQuestionIndex(lastIndex + 1);
+        } else {
+          setCurrentQuestionIndex(0);
+        }
+      }
+
       setIsLoading(false);
     };
 
@@ -90,7 +89,7 @@ export default function Quiz() {
     if (feedback?.show) {
       const timer = setTimeout(() => {
         setFeedback(null);
-      }, 1000); // 1秒後に非表示
+      }, 1000);
       return () => clearTimeout(timer);
     }
   }, [feedback]);
@@ -105,49 +104,49 @@ export default function Quiz() {
 
     setAnswers((prev) => [...prev, userAnswer]);
     setShowResult(true);
-    void saveAnswerLog(userAnswer, currentQuestion, sessionId);
-
-    const originalCard = cards[currentQuestion.id];
-    if (originalCard) {
-      let updatedCard = { ...originalCard };
-      updatedCard.total_count += 1;
-      if (isCorrect) {
-        updatedCard.correct_count += 1;
+    
+    try {
+      await saveAnswerLog(userAnswer, currentQuestion, sessionId);
+      const originalCard = cards[currentQuestion.id];
+      if (originalCard) {
+        let updatedCard = { ...originalCard };
+        updatedCard.total_count += 1;
+        if (isCorrect) {
+          updatedCard.correct_count += 1;
+        }
+        updatedCard = SpacedRepetitionScheduler.scheduleCard(updatedCard, grade);
+        setCards((prev) => ({ ...prev, [currentQuestion.id]: updatedCard }));
+        await saveCards([updatedCard]);
       }
-
-      updatedCard = SpacedRepetitionScheduler.scheduleCard(updatedCard, grade);
-
-      setCards((prev) => ({ ...prev, [currentQuestion.id]: updatedCard }));
-
-      await saveCards([updatedCard]);
+    } catch (error) {
+      console.error("Failed to save progress:", error);
     }
   };
 
   const handleNext = () => {
+    if (unitId) {
+      saveLastQuestionIndex(unitId, currentQuestionIndex);
+    }
     const nextIndex = currentQuestionIndex + 1;
     if (nextIndex >= questions.length) {
       setIsComplete(true);
-      // if (unitId) clearIncompleteQuiz(unitId);
+      if (unitId) clearLastQuestionIndex(unitId);
     } else {
       setCurrentQuestionIndex(nextIndex);
       setShowResult(false);
-      // if (unitId) {
-      //   const questionIds = questions.map(q => q.id);
-      //   saveIncompleteQuiz(unitId, questionIds, nextIndex);
-      // }
     }
   };
 
   const handleRestart = () => {
+    if (unitId) clearLastQuestionIndex(unitId);
     setCurrentQuestionIndex(0);
     setAnswers([]);
     setShowResult(false);
     setIsComplete(false);
-    // if (unitId) clearIncompleteQuiz(unitId);
   };
 
   const handleFinish = () => {
-    // if (unitId) clearIncompleteQuiz(unitId);
+    if (unitId) clearLastQuestionIndex(unitId);
     const score = answers.length > 0 ? Math.round((answers.filter((a) => a.isCorrect).length / answers.length) * 100) : 0;
     navigate(
       `/result?score=${score}&total=${questions.length}&correct=${answers.filter((a) => a.isCorrect).length}`,
@@ -155,68 +154,36 @@ export default function Quiz() {
     );
   };
 
+  const handleQuestionSelect = (value: string) => {
+    const newIndex = parseInt(value, 10);
+    if (!isNaN(newIndex)) {
+      setCurrentQuestionIndex(newIndex);
+      setShowResult(false);
+    }
+  };
+
   if (isLoading) {
     return (
-        <div className="min-h-screen gradient-learning p-4 sm:p-8">
-            <header className="container mx-auto"><Skeleton className="h-10 w-24" /></header>
-            <main className="container mx-auto mt-8">
-                <Skeleton className="w-full h-[60vh]" />
-            </main>
-        </div>
-    );
-  }
-
-  if (showNoUnitsError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center gradient-learning">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">まとめて学習の単元が選択されていません</h1>
-          <p className="text-muted-foreground mb-4">まとめて学習を行うには、学習する単元を選択してください。</p>
-          <Button onClick={() => navigate('/')}>ホームに戻る</Button>
-        </div>
+      <div className="min-h-screen gradient-learning p-4 sm:p-8">
+        <header className="container mx-auto"><Skeleton className="h-10 w-24" /></header>
+        <main className="container mx-auto mt-8">
+          <Skeleton className="w-full h-[60vh]" />
+        </main>
       </div>
     );
   }
 
   if (!unit || questions.length === 0) {
-    // デバッグ表示は有効のままにしておく
-    const searchParams = new URLSearchParams(location.search);
-    const levelsParam = searchParams.get("levels");
-    const selectedLevels = levelsParam ? levelsParam.split(",") : [];
-    const debugInfo = {
-      message: "デバッグ情報。この内容をコピーして開発者に送ってください。",
-      timestamp: new Date().toISOString(),
-      unitId,
-      locationSearch: location.search,
-      levelsParam,
-      selectedLevels,
-      allCardsFromState: cards,
-      numberOfCards: Object.keys(cards).length,
-      questionsLength: questions.length,
-      unitExists: !!unit,
-      unitFromState: unit,
-    };
-
     return (
-      <div className="min-h-screen gradient-learning p-4 sm:p-8 text-white">
-        <div className="container mx-auto">
-          <h1 className="text-2xl font-bold mb-4">クイズが見つかりません</h1>
-          <p className="text-slate-300 mb-4">選択したレベルの問題がないか、単元が見つかりませんでした。</p>
-          <Button onClick={() => navigate('/')} variant="secondary">ホームに戻る</Button>
-          <div className="mt-6 p-4 bg-black/60 rounded-lg border border-slate-700">
-            <h2 className="text-lg font-bold mb-2 text-yellow-300">デバッグ情報</h2>
-            <p className="text-sm text-slate-400 mb-4">問題解決のため、以下の内容をコピーして開発者にお知らせください。</p>
-            <pre className="text-xs whitespace-pre-wrap break-all p-3 bg-slate-900 rounded-md">
-              {JSON.stringify(debugInfo, null, 2)}
-            </pre>
-          </div>
+      <div className="min-h-screen flex items-center justify-center gradient-learning">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">クイズが見つかりません</h1>
+          <p className="text-muted-foreground mb-4">選択したレベルの問題がないか、単元が見つかりませんでした。</p>
+          <Button onClick={() => navigate('/')}>ホームに戻る</Button>
         </div>
       </div>
     );
   }
-
-  // 中断・再開機能を無効化
-  // if (showResumePrompt && incompleteSession) { ... }
 
   if (isComplete) {
     const correctAnswers = answers.filter(a => a.isCorrect).length;
@@ -271,7 +238,6 @@ export default function Quiz() {
   }
 
   const currentQuestion = questions[currentQuestionIndex];
-  const lastAnswer = answers.length > 0 ? answers[answers.length - 1] : null;
 
   return (
     <div className="min-h-screen gradient-learning">
@@ -289,10 +255,26 @@ export default function Quiz() {
               <ArrowLeft className="h-4 w-4" />
               戻る
             </Button>
-            <div>
+            <div className="flex-1">
               <h1 className="text-lg font-semibold">{unit?.name}</h1>
-              <p className="text-muted-foreground">{unit?.description}</p>
+              <p className="text-sm text-muted-foreground">{unit?.description}</p>
             </div>
+            {questions.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Select value={String(currentQuestionIndex)} onValueChange={handleQuestionSelect}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="問題を選択" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {questions.map((_, index) => (
+                      <SelectItem key={index} value={String(index)}>
+                        {index + 1} / {questions.length} 問目
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -306,7 +288,6 @@ export default function Quiz() {
             onAnswer={handleAnswer}
             showResult={showResult}
             selectedAnswer={showResult ? answers[answers.length - 1]?.answer : undefined}
-            lastResult={lastAnswer?.isCorrect}
             masteryLevel={currentCard?.masteryLevel}
           />
         ) : (

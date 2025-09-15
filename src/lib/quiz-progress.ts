@@ -1,91 +1,45 @@
-const PROGRESS_KEY = 'quizProgress';
-const INCOMPLETE_QUIZ_KEY = 'incompleteQuizzes';
+const STORAGE_PREFIX = 'quiz-last-index-';
 
-interface ProgressMap {
-  [unitId: string]: number;
-}
-
-interface IncompleteQuiz {
-  questionIds: number[];
-  currentIndex: number;
-}
-
-interface IncompleteQuizMap {
-  [unitId: string]: IncompleteQuiz;
-}
-
-function loadProgress(): ProgressMap {
-  if (typeof window === 'undefined') return {};
+/**
+ * 指定された単元の最後に解いた問題のインデックスを保存する
+ * @param unitId - 単元ID
+ * @param index - 最後に解いた問題の0ベースのインデックス
+ */
+export function saveLastQuestionIndex(unitId: string, index: number) {
   try {
-    const raw = window.localStorage.getItem(PROGRESS_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
+    localStorage.setItem(`${STORAGE_PREFIX}${unitId}`, String(index));
+  } catch (error) {
+    console.error('Failed to save last question index:', error);
   }
 }
 
-function saveProgressMap(map: ProgressMap): void {
-  if (typeof window === 'undefined') return;
+/**
+ * 指定された単元の最後に解いた問題のインデックスを取得する
+ * @param unitId - 単元ID
+ * @returns 最後に解いた問題のインデックス。なければnull
+ */
+export function getLastQuestionIndex(unitId: string): number | null {
   try {
-    window.localStorage.setItem(PROGRESS_KEY, JSON.stringify(map));
-  } catch {
-    // ignore
+    const data = localStorage.getItem(`${STORAGE_PREFIX}${unitId}`);
+    if (data === null) {
+      return null;
+    }
+    const index = parseInt(data, 10);
+    return isNaN(index) ? null : index;
+  } catch (error) {
+    console.error('Failed to get last question index:', error);
+    return null;
   }
 }
 
-function loadIncompleteQuizzes(): IncompleteQuizMap {
-    if (typeof window === 'undefined') return {};
-    try {
-        const raw = window.localStorage.getItem(INCOMPLETE_QUIZ_KEY);
-        return raw ? JSON.parse(raw) : {};
-    } catch {
-        return {};
-    }
-}
-
-function saveIncompleteQuizzes(map: IncompleteQuizMap): void {
-    if (typeof window === 'undefined') return;
-    try {
-        window.localStorage.setItem(INCOMPLETE_QUIZ_KEY, JSON.stringify(map));
-    } catch {
-        // ignore
-    }
-}
-
-export function getQuizProgress(unitId: string): number {
-  const map = loadProgress();
-  return map[unitId] ?? 0;
-}
-
-export function saveQuizProgress(unitId: string, index: number): void {
-  const map = loadProgress();
-  map[unitId] = index;
-  saveProgressMap(map);
-}
-
-export function clearQuizProgress(unitId: string): void {
-  const map = loadProgress();
-  delete map[unitId];
-  saveProgressMap(map);
-}
-
-export function saveIncompleteQuiz(
-    unitId: string,
-    questionIds: number[],
-    currentIndex: number
-): void {
-    const map = loadIncompleteQuizzes();
-    map[unitId] = { questionIds, currentIndex };
-    saveIncompleteQuizzes(map);
-}
-
-export function getIncompleteQuiz(unitId: string): IncompleteQuiz | null {
-    const map = loadIncompleteQuizzes();
-    return map[unitId] ?? null;
-}
-
-export function clearIncompleteQuiz(unitId: string): void {
-    const map = loadIncompleteQuizzes();
-    delete map[unitId];
-    saveIncompleteQuizzes(map);
+/**
+ * 指定された単元の進捗をクリアする
+ * @param unitId - 単元ID
+ */
+export function clearLastQuestionIndex(unitId: string) {
+  try {
+    localStorage.removeItem(`${STORAGE_PREFIX}${unitId}`);
+  } catch (error) {
+    console.error('Failed to clear last question index:', error);
+  }
 }
