@@ -11,7 +11,6 @@ export interface Question {
 }
 
 export interface Card {
-  id: string;
   questionId: string;
   interval: number; // days
   repetitions: number;

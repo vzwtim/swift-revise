@@ -8,7 +8,6 @@ export class SpacedRepetitionScheduler {
 
   static createNewCard(questionId: string): Card {
     return {
-      id: `card_${questionId}`,
       questionId,
       interval: 1,
       repetitions: 0,

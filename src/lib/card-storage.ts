@@ -20,7 +20,6 @@ export const loadAllCards = async (): Promise<{ [questionId: string]: Card }> =>
 
     // スネークケースからキャメルケースへ手動で変換
     const cards: Card[] = (cardsFromDb || []).map(dbCard => ({
-      id: dbCard.id,
       questionId: dbCard.question_id,
       interval: dbCard.interval,
       repetitions: dbCard.repetitions,
@@ -58,7 +57,6 @@ export const saveCards = async (cardsToSave: Card[]) => {
   try {
     // キャメルケースからスネークケースへ手動で変換
     const recordsToUpsert = cardsToSave.map(card => ({
-      id: card.id,
       user_id: user.id,
       question_id: card.questionId,
       interval: card.interval,
