@@ -131,17 +131,26 @@ export default function SubjectList() {
 
   const updatedSubjects = filteredSubjects.map(subject => {
     const subjectQuestionIds = new Set(
-      subject.units.flatMap((u) => u.questions.map((q) => q.id))
+      subject.units.flatMap(u => u.questions.map(q => q.id))
     );
-    const subjectCards = Object.values(cards).filter((c) =>
+
+    // DBに保存されているカード（学習済み）
+    const subjectCards = Object.values(cards).filter(c =>
       subjectQuestionIds.has(c.questionId)
     );
 
+    // 学習済みのカードを習熟度別に集計
     const progressCounts: Partial<Record<MasteryLevel, number>> = {};
     subjectCards.forEach(card => {
-      const level = card.masteryLevel || 'New';
+      const level = card.masteryLevel || 'New'; // 'New'のはずはないが念のため
       progressCounts[level] = (progressCounts[level] || 0) + 1;
     });
+
+    // 「New」の問題数を計算
+    // (教科の総問題数) - (学習済みのカード数) = 未学習の問題数
+    const totalQuestionsInSubject = subject.totalQuestions;
+    const learnedCardCount = subjectCards.length;
+    progressCounts['New'] = totalQuestionsInSubject - learnedCardCount;
     
     const completedQuestions = progressCounts.Perfect || 0;
 
