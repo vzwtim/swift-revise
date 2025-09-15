@@ -14,8 +14,10 @@ const ARES_SUBJECT_MAP: Record<string, string> = {
 
 // 宅建用の科目マップ (ダミー)
 const TAKKEN_SUBJECT_MAP: Record<string, string> = {
-  '101': '宅建業法',
-  '102': '権利関係',
+  '101': '民法',
+  '102': '法令上の制限',
+  '103': '宅建業法',
+  '104': '税・その他',
 };
 
 // CSVパーサーを汎用化

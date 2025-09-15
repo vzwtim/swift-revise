@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Building, Award, User, BarChart } from "lucide-react";
+import { Award, User, BarChart } from "lucide-react";
+import { CATEGORY_DISPLAY_NAMES } from "@/lib/constants";
 
 // 親コンポーネントから渡されるプロフィール情報の型
 type Profile = {
@@ -105,7 +106,7 @@ export function UserProfileCard({
           </h5>
           <div className="flex flex-wrap gap-2">
             {profile.studying_qualifications.map((qual) => (
-              <Badge key={qual} variant="outline">{qual}</Badge>
+              <Badge key={qual} variant="outline">{CATEGORY_DISPLAY_NAMES[qual] || qual}</Badge> // マッピングを適用
             ))}
           </div>
         </div>
