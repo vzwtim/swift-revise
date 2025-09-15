@@ -1,6 +1,6 @@
 import { Question, Subject } from '@/lib/types';
 import aresCsv from './ARES2024.csv?raw';
-import takkenCsv from './takken2024.csv?raw';
+import takkenCsv from './takken.csv?raw';
 
 // ARES用の科目マップ
 const ARES_SUBJECT_MAP: Record<string, string> = {

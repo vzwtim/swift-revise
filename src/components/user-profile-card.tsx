@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Award, User, BarChart } from "lucide-react";
+import { Building, Award, User, BarChart } from "lucide-react";
 import { CATEGORY_DISPLAY_NAMES } from "@/lib/constants";
 
 // 親コンポーネントから渡されるプロフィール情報の型
