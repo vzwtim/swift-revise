@@ -1,33 +1,29 @@
 import { supabase } from "@/integrations/supabase/client";
-import { UserAnswer } from "@/lib/types";
+import { UserAnswer, Question } from "@/lib/types";
 
-const TABLE_NAME = "answer_logs"; // テーブル名を修正
+const TABLE_NAME = "answer_logs";
 
-export async function saveAnswerHistory(sessionId: string, answer: UserAnswer) {
-  // ログインしているユーザーを取得
+export async function saveAnswerLog(answer: UserAnswer, question: Question) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    // 未ログイン時は何もしない（あるいはローカルに保存するなどの代替策も考えられる）
-    console.log("User not logged in. Answer history not saved to DB.");
+    console.log("User not logged in. Answer log not saved to DB.");
     return;
   }
 
   const { error } = await supabase
     .from(TABLE_NAME)
     .insert({
-      user_id: user.id, // user_id を追加
-      session_id: sessionId,
-      question_id: answer.questionId,
-      // 'answer' カラムはテーブルにないので削除
-      time_spent: answer.timeSpent,
+      user_id: user.id,
+      question_id: question.id,
       is_correct: answer.isCorrect,
-      grade: answer.grade,
+      subject: question.category, // Use category from question
     });
 
   if (error) {
-    console.error("Failed to save answer history", error);
+    console.error("Failed to save answer log", error);
   }
 }
+
 
 export async function fetchAnswerHistory(sessionId: string) {
   const { data: { user } } = await supabase.auth.getUser();

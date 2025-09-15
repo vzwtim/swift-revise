@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { getDailyTarget, setDailyTarget } from "@/lib/answer-stats";
 import { cn, getRankStyle } from "@/lib/utils";
 import { loadAllCards } from "@/lib/card-storage";
-import { Card as CardType, MasteryLevel } from "@/lib/types";
+import { Card as CardType, MasteryLevel, Subject } from "@/lib/types"; // Import Subject
 import { QuizSettingsDialog } from "@/components/quiz-settings-dialog";
 import { BulkStudyDialog } from "@/components/bulk-study-dialog";
 import { useAuth } from "@/contexts/AuthContext";
@@ -53,7 +53,8 @@ export default function SubjectList() {
 
       if (user) {
         try {
-          const { data, error } = await supabase.rpc('get_user_stats', { p_user_id: user.id }).single();
+          // TODO: This needs to be category-specific
+          const { data, error } = await supabase.rpc('get_my_stats').single();
           if (error) console.error('Error fetching user stats:', error);
           else if (data) setStats(data);
         } catch (error) {
@@ -122,6 +123,22 @@ export default function SubjectList() {
     setDailyTarget(value);
   };
 
+  // Group subjects by category
+  const groupedSubjects = updatedSubjects.reduce((acc, subject) => {
+    const category = subject.category || 'uncategorized';
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(subject);
+    return acc;
+  }, {} as Record<string, (Subject & { progressCounts: Partial<Record<MasteryLevel, number>>, completedQuestions: number })[]>);
+
+  const categoryDisplayNames: Record<string, string> = {
+    ares: 'ARES 不動産ファイナンス',
+    takken: '宅地建物取引士',
+    uncategorized: 'その他',
+  };
+
   const renderHeader = () => (
     <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4">
@@ -132,7 +149,7 @@ export default function SubjectList() {
             </div>
             <div>
               <h1 className="text-xl font-bold">StudyFlow</h1>
-              <p className="text-sm text-muted-foreground">不動産ファイナンス学習</p>
+              {/* <p className="text-sm text-muted-foreground">不動産ファイナンス学習</p> */}
             </div>
           </div>
           <div className="flex items-center gap-4 text-sm">
@@ -211,20 +228,27 @@ export default function SubjectList() {
             </div>
 
             <div className="mb-8 flex justify-between items-center">
-              <h2 className="text-2xl font-bold">学習科目</h2>
+              <h2 className="text-2xl font-bold">学習カテゴリ</h2>
               <Button onClick={() => setIsBulkStudyOpen(true)} variant="outline" className="gap-2">
                 <RefreshCw className="h-4 w-4" />
                 まとめて学習
               </Button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {updatedSubjects.map((subject) => (
-                <SubjectCard
-                  key={subject.id}
-                  subject={subject}
-                  progressCounts={subject.progressCounts}
-                  onStartLearning={handleStartLearning}
-                />
+            <div className="space-y-12">
+              {Object.entries(groupedSubjects).map(([category, subjectsInCategory]) => (
+                <div key={category}>
+                  <h3 className="text-xl font-bold mb-4 border-b pb-2">{categoryDisplayNames[category] || category}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+                    {subjectsInCategory.map((subject) => (
+                      <SubjectCard
+                        key={subject.id}
+                        subject={subject}
+                        progressCounts={subject.progressCounts}
+                        onStartLearning={handleStartLearning}
+                      />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
             <div className="mt-12">

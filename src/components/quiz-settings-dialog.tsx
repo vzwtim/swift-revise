@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,19 +28,39 @@ const DEFAULT_LEVELS: MasteryLevel[] = ['Great', 'Good', 'Bad', 'Miss', 'New'];
 export function QuizSettingsDialog({ open, onOpenChange, targetId, title, description, selectedUnitIds = [] }: QuizSettingsDialogProps) {
   const navigate = useNavigate();
   const [selectedLevels, setSelectedLevels] = useState<MasteryLevel[]>(DEFAULT_LEVELS);
+  const [allQuestions, setAllQuestions] = useState(false);
+
+  // Reset state when dialog is opened/closed
+  useEffect(() => {
+    if (open) {
+      setAllQuestions(false);
+      setSelectedLevels(DEFAULT_LEVELS);
+    }
+  }, [open]);
 
   const handleLevelToggle = (level: MasteryLevel, checked: boolean) => {
+    if (allQuestions) return; // Do nothing if "All Questions" is checked
     setSelectedLevels(prev =>
       checked ? [...prev, level] : prev.filter(l => l !== level)
     );
   };
 
+  const handleAllQuestionsToggle = (checked: boolean) => {
+    setAllQuestions(checked);
+    if (checked) {
+      setSelectedLevels(ALL_LEVELS);
+    } else {
+      setSelectedLevels(DEFAULT_LEVELS);
+    }
+  };
+
   const handleStartQuiz = () => {
-    if (selectedLevels.length === 0) {
+    if (!allQuestions && selectedLevels.length === 0) {
       alert('少なくとも1つのレベルを選択してください。');
       return;
     }
-    const levelsQuery = selectedLevels.join(',');
+    
+    const levelsQuery = allQuestions ? 'all' : selectedLevels.join(',');
     let path = `/quiz/${targetId}?levels=${levelsQuery}`;
 
     if (targetId === 'bulk-study' && selectedUnitIds && selectedUnitIds.length > 0) {
@@ -48,6 +68,7 @@ export function QuizSettingsDialog({ open, onOpenChange, targetId, title, descri
     }
 
     navigate(path);
+    onOpenChange(false); // Close dialog on navigation
   };
 
   return (
@@ -57,19 +78,34 @@ export function QuizSettingsDialog({ open, onOpenChange, targetId, title, descri
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-4 py-4">
-          {ALL_LEVELS.map(level => (
-            <div key={level} className="flex items-center space-x-2">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4 py-4">
+            {ALL_LEVELS.map(level => (
+              <div key={level} className="flex items-center space-x-2">
+                <Checkbox
+                  id={level}
+                  checked={selectedLevels.includes(level)}
+                  onCheckedChange={(checked) => handleLevelToggle(level, !!checked)}
+                  disabled={allQuestions}
+                />
+                <Label htmlFor={level} className="font-medium" disabled={allQuestions}>
+                  {level}
+                </Label>
+              </div>
+            ))}
+          </div>
+          <div className="border-t pt-4">
+            <div className="flex items-center space-x-2">
               <Checkbox
-                id={level}
-                checked={selectedLevels.includes(level)}
-                onCheckedChange={(checked) => handleLevelToggle(level, !!checked)}
+                id="all-questions"
+                checked={allQuestions}
+                onCheckedChange={handleAllQuestionsToggle}
               />
-              <Label htmlFor={level} className="font-medium">
-                {level}
+              <Label htmlFor="all-questions" className="font-medium">
+                すべての問題から出題 (初めから)
               </Label>
             </div>
-          ))}
+          </div>
         </div>
         <DialogFooter>
           <Button onClick={handleStartQuiz} className="w-full">

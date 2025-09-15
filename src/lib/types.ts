@@ -6,6 +6,7 @@ export interface Question {
   choices: string[];
   answer: number;
   explanation: string;
+  category: string; // Add category to distinguish 'ares', 'takken', etc.
   difficulty?: 'easy' | 'medium' | 'hard';
 }
 
@@ -55,6 +56,7 @@ export interface Subject {
   id: string;
   name: string;
   description: string;
+  category: string; // Add category to distinguish 'ares', 'takken', etc.
   units: Unit[];
   totalQuestions: number;
   completedQuestions: number;

@@ -1,7 +1,9 @@
 import { Question, Subject } from '@/lib/types';
 import aresCsv from './ARES2024.csv?raw';
+import takkenCsv from './takken2024.csv?raw';
 
-const SUBJECT_MAP: Record<string, string> = {
+// ARES用の科目マップ
+const ARES_SUBJECT_MAP: Record<string, string> = {
   '101': '企業と不動産',
   '102': '不動産証券化の概要',
   '103': '不動産投資の基礎',
@@ -10,7 +12,18 @@ const SUBJECT_MAP: Record<string, string> = {
   '106': '不動産証券化と倫理行動',
 };
 
-const parseAresCsv = (csv: string): Question[] => {
+// 宅建用の科目マップ (ダミー)
+const TAKKEN_SUBJECT_MAP: Record<string, string> = {
+  '101': '宅建業法',
+  '102': '権利関係',
+};
+
+// CSVパーサーを汎用化
+const parseCsv = (
+  csv: string,
+  subjectMap: Record<string, string>,
+  idPrefix: string
+): Question[] => {
   const lines = csv.trim().split(/\r?\n/);
   const rows: string[] = [];
   let buffer: string[] = [];
@@ -34,42 +47,63 @@ const parseAresCsv = (csv: string): Question[] => {
       if (!match) return null;
       const [, problemNo, subId, stem, correct, explanation] = match;
       const [subjectCode] = problemNo.split('-');
-      const subjectName = SUBJECT_MAP[subjectCode];
+      const subjectName = subjectMap[subjectCode];
       if (!subjectName) return null;
       return {
-        id: `ares-${problemNo}-${subId}`,
+        id: `${idPrefix}-${problemNo}-${subId}`,
         subject: subjectName,
         unit: '基本問題',
         question: stem,
         choices: ['TRUE', 'FALSE'],
         answer: correct === 'TRUE' ? 0 : 1,
         explanation,
+        category: idPrefix,
       } as Question;
     })
     .filter((q): q is Question => q !== null);
 };
 
-export const aresQuestions = parseAresCsv(aresCsv);
+// 各カテゴリの問題をパース
+export const aresQuestions = parseCsv(aresCsv, ARES_SUBJECT_MAP, 'ares');
+export const takkenQuestions = parseCsv(takkenCsv, TAKKEN_SUBJECT_MAP, 'takken');
 
-export const subjects: Subject[] = Object.entries(SUBJECT_MAP).map(([code, name]) => {
-  const questions = aresQuestions.filter((q) => q.subject === name);
-  return {
-    id: `ares-${code}`,
-    name,
-    description: `${name}の基本問題`,
-    units: [
-      {
-        id: `ares-${code}-unit`,
-        name: '基本問題',
-        description: `${name}の全問題`,
-        subjectId: `ares-${code}`,
-        questions,
-        dueCards: 0,
-        newCards: questions.length,
-      },
-    ],
-    totalQuestions: questions.length,
-    completedQuestions: 0,
-  } as Subject;
-});
+// すべての問題を結合
+export const allQuestions = [...aresQuestions, ...takkenQuestions];
+
+// 科目リスト生成ロジックを汎用化
+const createSubjects = (
+  subjectMap: Record<string, string>,
+  questions: Question[],
+  idPrefix: string
+): Subject[] => {
+  return Object.entries(subjectMap).map(([code, name]) => {
+    const subjectQuestions = questions.filter((q) => q.subject === name);
+    return {
+      id: `${idPrefix}-${code}`,
+      name,
+      description: `${name}の基本問題`,
+      category: idPrefix,
+      units: [
+        {
+          id: `${idPrefix}-${code}-unit`,
+          name: '基本問題',
+          description: `${name}の全問題`,
+          subjectId: `${idPrefix}-${code}`,
+          questions: subjectQuestions,
+          dueCards: 0,
+          newCards: subjectQuestions.length,
+        },
+      ],
+      totalQuestions: subjectQuestions.length,
+      completedQuestions: 0,
+    } as Subject;
+  });
+};
+
+// 各カテゴリの科目を生成
+const aresSubjects = createSubjects(ARES_SUBJECT_MAP, aresQuestions, 'ares');
+const takkenSubjects = createSubjects(TAKKEN_SUBJECT_MAP, takkenQuestions, 'takken');
+
+// すべての科目を結合
+export const subjects = [...aresSubjects, ...takkenSubjects];
 

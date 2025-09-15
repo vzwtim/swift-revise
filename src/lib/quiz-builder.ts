@@ -36,14 +36,18 @@ export function buildQuizQuestions(
 } {
   const searchParams = new URLSearchParams(locationSearch);
   const levelsParam = searchParams.get("levels");
+  
+  // If levels=all is passed, or no levels are specified, don't filter by level.
+  const shouldFilterByLevel = levelsParam && levelsParam !== 'all';
+
   const selectedLevels: MasteryLevel[] = levelsParam
     ? (levelsParam.split(",") as MasteryLevel[])
-    : ["Great", "Good", "Bad", "Miss", "New"];
-
-  const unitsParam = searchParams.get("units");
-  const selectedUnitIds: string[] = unitsParam ? unitsParam.split(",") : [];
+    : []; // Default to empty, filtering is skipped anyway if param is missing
 
   const filterByLevel = (q: Question): boolean => {
+    if (!shouldFilterByLevel) {
+      return true; // Skip filtering
+    }
     const card = allCards[q.id];
     const level = card?.masteryLevel || "New";
     return selectedLevels.includes(level);

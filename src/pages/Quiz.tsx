@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { aresQuestions as allQuestions } from "@/data/questions";
+import { allQuestions } from "@/data/questions";
 
 import { QuizCard } from "@/components/quiz-card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { SpacedRepetitionScheduler } from "@/lib/scheduler";
 import { UserAnswer, Card, Question, Unit } from "@/lib/types";
 import { ArrowLeft, RotateCcw } from "lucide-react";
-import { saveAnswerHistory } from "@/lib/answer-history";
+import { saveAnswerLog } from "@/lib/answer-history";
 import { initializeCards, buildQuizQuestions } from "@/lib/quiz-builder";
 
 import {
@@ -125,7 +125,7 @@ export default function Quiz() {
 
     setAnswers((prev) => [...prev, userAnswer]);
     setShowResult(true);
-    void saveAnswerHistory(sessionId, userAnswer);
+    void saveAnswerLog(userAnswer, currentQuestion);
 
     const originalCard = cards[currentQuestion.id];
     if (originalCard) {

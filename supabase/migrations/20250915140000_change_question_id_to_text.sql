@@ -1,0 +1,1 @@
+ALTER TABLE public.answer_logs ALTER COLUMN question_id TYPE TEXT USING question_id::TEXT;
