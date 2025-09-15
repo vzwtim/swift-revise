@@ -25,8 +25,8 @@ export const loadAllCards = async (): Promise<{ [questionId: string]: Card }> =>
       interval: dbCard.interval,
       repetitions: dbCard.repetitions,
       easeFactor: dbCard.ease_factor,
-      dueDate: dbCard.due_date,
-      lastReviewed: dbCard.last_reviewed,
+      dueDate: new Date(dbCard.due_date).getTime(), // ISO文字列からタイムスタンプ数値に変換
+      lastReviewed: dbCard.last_reviewed ? new Date(dbCard.last_reviewed).getTime() : undefined,
       consecutiveCorrectAnswers: dbCard.consecutive_correct_answers,
       needsReview: dbCard.needs_review,
       masteryLevel: dbCard.mastery_level,
@@ -64,8 +64,8 @@ export const saveCards = async (cardsToSave: Card[]) => {
       interval: card.interval,
       repetitions: card.repetitions,
       ease_factor: card.easeFactor,
-      due_date: card.dueDate,
-      last_reviewed: card.lastReviewed,
+      due_date: new Date(card.dueDate).toISOString(), // 数値をISO文字列に変換
+      last_reviewed: card.lastReviewed ? new Date(card.lastReviewed).toISOString() : null,
       consecutive_correct_answers: card.consecutiveCorrectAnswers,
       needs_review: card.needsReview,
       mastery_level: card.masteryLevel,
