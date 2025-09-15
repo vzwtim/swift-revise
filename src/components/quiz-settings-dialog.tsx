@@ -27,16 +27,70 @@ const DEFAULT_LEVELS: MasteryLevel[] = ['Perfect', 'Great', 'Good', 'Bad', 'Miss
 
 export function QuizSettingsDialog({ open, onOpenChange, targetId, title, description, selectedUnitIds = [] }: QuizSettingsDialogProps) {
   const navigate = useNavigate();
-  const [selectedLevels, setSelectedLevels] = useState<MasteryLevel[]>(DEFAULT_LEVELS);
-  const [allQuestions, setAllQuestions] = useState(false);
+  const [selectedLevels, setSelectedLevels] = useState<MasteryLevel[]>(() => {
+    try {
+      const savedLevels = localStorage.getItem('quiz_selected_mastery_levels');
+      return savedLevels ? JSON.parse(savedLevels) : DEFAULT_LEVELS;
+    } catch (error) {
+      console.error("Failed to load selected levels from localStorage:", error);
+      return DEFAULT_LEVELS;
+    }
+  });
+  const [allQuestions, setAllQuestions] = useState<boolean>(() => {
+    try {
+      const savedAllQuestions = localStorage.getItem('quiz_all_questions_setting');
+      return savedAllQuestions ? JSON.parse(savedAllQuestions) : false;
+    } catch (error) {
+      console.error("Failed to load allQuestions setting from localStorage:", error);
+      return false;
+    }
+  });
 
-  // Reset state when dialog is opened/closed
+  // selectedLevels が変更されたら localStorage に保存
+  useEffect(() => {
+    try {
+      localStorage.setItem('quiz_selected_mastery_levels', JSON.stringify(selectedLevels));
+    } catch (error) {
+      console.error("Failed to save selected levels to localStorage:", error);
+    }
+  }, [selectedLevels]);
+
+  // allQuestions が変更されたら localStorage に保存
+  useEffect(() => {
+    try {
+      localStorage.setItem('quiz_all_questions_setting', JSON.stringify(allQuestions));
+    } catch (error) {
+      console.error("Failed to save allQuestions setting to localStorage:", error);
+    }
+  }, [allQuestions]);
+
+  // ダイアログが開かれたときに、localStorageから読み込んだ設定を反映
   useEffect(() => {
     if (open) {
-      setAllQuestions(false);
-      setSelectedLevels(DEFAULT_LEVELS);
+      try {
+        const savedLevels = localStorage.getItem('quiz_selected_mastery_levels');
+        const savedAllQuestions = localStorage.getItem('quiz_all_questions_setting');
+
+        const loadedLevels = savedLevels ? JSON.parse(savedLevels) : DEFAULT_LEVELS;
+        const loadedAllQuestions = savedAllQuestions ? JSON.parse(savedAllQuestions) : false;
+
+        setSelectedLevels(loadedLevels);
+        setAllQuestions(loadedAllQuestions);
+
+        // "すべての問題から出題"が選択されている場合、selectedLevelsをALL_LEVELSに強制
+        if (loadedAllQuestions) {
+          setSelectedLevels(ALL_LEVELS);
+        }
+
+      } catch (error) {
+        console.error("Failed to load settings on dialog open:", error);
+        setSelectedLevels(DEFAULT_LEVELS);
+        setAllQuestions(false);
+      }
     }
   }, [open]);
+
+  // 既存のuseEffectは削除
 
   const handleLevelToggle = (level: MasteryLevel, checked: boolean) => {
     if (allQuestions) return; // Do nothing if "All Questions" is checked
@@ -102,7 +156,7 @@ export function QuizSettingsDialog({ open, onOpenChange, targetId, title, descri
                 onCheckedChange={handleAllQuestionsToggle}
               />
               <Label htmlFor="all-questions" className="font-medium">
-                すべての問題から出題 (初めから)
+                すべての問題から出題
               </Label>
             </div>
           </div>

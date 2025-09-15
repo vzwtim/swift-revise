@@ -31,7 +31,7 @@ const parseCsv = (
   let buffer: string[] = [];
 
   for (const line of lines.slice(1)) {
-    if (/^\d{3}-\d+,\d+,/.test(line)) {
+    if (/^\d{3}-\d+-\d+,\d+,/.test(line)) {
       if (buffer.length) {
         rows.push(buffer.join(''));
         buffer = [];
