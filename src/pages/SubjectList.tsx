@@ -142,6 +142,26 @@ export default function SubjectList() {
       subjectQuestionIds.has(c.questionId)
     );
 
+    // === 新しいデバッグログを追加 ===
+    if (subject.name === '宅建業法' && subjectQuestionIds.size > 0 && subjectCards.length === 0) {
+      console.log('--- ID不一致の調査 ---');
+      // プログラムが認識しているIDを1つ取得
+      const idFromCode = subjectQuestionIds.values().next().value;
+      console.log(`コード上のID: "${idFromCode}" (長さ: ${idFromCode.length})`);
+
+      // DB上の、似ているIDを探して取得
+      const similarCard = Object.values(cards).find(c => c.questionId.includes('-103-'));
+      if (similarCard) {
+        const idFromDb = similarCard.questionId;
+        console.log(`DB上のID:   "${idFromDb}" (長さ: ${idFromDb.length})`);
+        console.log(`2つのIDは完全一致するか？: ${idFromCode === idFromDb}`);
+      } else {
+        console.log('比較対象のカードがDBに見つかりませんでした。');
+      }
+      console.log('--------------------------');
+    }
+    // ============================
+
     const progressCounts: Partial<Record<MasteryLevel, number>> = {};
     subjectCards.forEach(card => {
       const level = card.masteryLevel || 'New';
