@@ -1,5 +1,5 @@
 import { Question, Subject } from '@/lib/types';
-import aresCsv from './ARES2024.csv?raw';
+import aresCsv from './ARES.csv?raw';
 import takkenCsv from './takken.csv?raw';
 
 // ARES用の科目マップ
