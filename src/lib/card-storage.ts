@@ -13,7 +13,8 @@ export const loadAllCards = async (): Promise<{ [questionId: string]: Card }> =>
     const { data: cardsFromDb, error } = await supabase
       .from('cards')
       .select('*')
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .limit(5000);
 
     if (error) {
       console.error("loadAllCards: Error loading cards from DB:", error);

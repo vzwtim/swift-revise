@@ -54,14 +54,6 @@ export default function SubjectList() {
     const fetchData = async () => {
       setIsLoading(true);
       const loadedCards = await loadAllCards();
-
-      // === デバッグログを追加 ===
-      console.log('--- DBから読み込んだ全カードデータ ---');
-      console.log(loadedCards);
-      const takkenCardIds = Object.keys(loadedCards).filter(id => id.startsWith('takken-'));
-      console.log(`読み込んだ宅建カードID (${takkenCardIds.length}件):`, takkenCardIds);
-      // ============================
-
       setCards(loadedCards);
 
       if (user) {
@@ -142,33 +134,9 @@ export default function SubjectList() {
       subject.units.flatMap((u) => u.questions.map((q) => q.id))
     );
 
-    // === デバッグログを追加 ===
-    console.log(`[集計チェック] 教科: ${subject.name}, 認識している問題数: ${subjectQuestionIds.size}`);
-    // ========================
-
     const subjectCards = Object.values(cards).filter((c) =>
       subjectQuestionIds.has(c.questionId)
     );
-
-    // === 新しいデバッグログを追加 ===
-    if (subject.name === '宅建業法' && subjectQuestionIds.size > 0 && subjectCards.length === 0) {
-      console.log('--- ID不一致の調査 ---');
-      // プログラムが認識しているIDを1つ取得
-      const idFromCode = subjectQuestionIds.values().next().value;
-      console.log(`コード上のID: "${idFromCode}" (長さ: ${idFromCode.length})`);
-
-      // DB上の、似ているIDを探して取得
-      const similarCard = Object.values(cards).find(c => c.questionId.includes('-103-'));
-      if (similarCard) {
-        const idFromDb = similarCard.questionId;
-        console.log(`DB上のID:   "${idFromDb}" (長さ: ${idFromDb.length})`);
-        console.log(`2つのIDは完全一致するか？: ${idFromCode === idFromDb}`);
-      } else {
-        console.log('比較対象のカードがDBに見つかりませんでした。');
-      }
-      console.log('--------------------------');
-    }
-    // ============================
 
     const progressCounts: Partial<Record<MasteryLevel, number>> = {};
     subjectCards.forEach(card => {
