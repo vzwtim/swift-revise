@@ -4,27 +4,30 @@ import { Card } from "./types";
 export const loadAllCards = async (): Promise<{ [questionId: string]: Card }> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
+    console.log("loadAllCards: No user session, returning empty cards.");
     return {};
   }
 
   try {
+    console.log("loadAllCards: Fetching cards for user:", user.id);
     const { data: cardsFromDb, error } = await supabase
       .from('cards')
       .select('*')
       .eq('user_id', user.id);
 
     if (error) {
-      console.error("Error loading cards from DB:", error);
+      console.error("loadAllCards: Error loading cards from DB:", error);
       throw error;
     }
 
-    // スネークケースからキャメルケースへ手動で変換
+    console.log("loadAllCards: Cards fetched from DB:", cardsFromDb);
+
     const cards: Card[] = (cardsFromDb || []).map(dbCard => ({
       questionId: dbCard.question_id,
       interval: dbCard.interval,
       repetitions: dbCard.repetitions,
       easeFactor: dbCard.ease_factor,
-      dueDate: new Date(dbCard.due_date).getTime(), // ISO文字列からタイムスタンプ数値に変換
+      dueDate: new Date(dbCard.due_date).getTime(),
       lastReviewed: dbCard.last_reviewed ? new Date(dbCard.last_reviewed).getTime() : undefined,
       consecutiveCorrectAnswers: dbCard.consecutive_correct_answers,
       needsReview: dbCard.needs_review,
@@ -34,16 +37,16 @@ export const loadAllCards = async (): Promise<{ [questionId: string]: Card }> =>
       user_id: dbCard.user_id
     }));
 
-    // 配列を { [questionId]: Card } のマップに変換
     const cardsMap = cards.reduce((acc, card) => {
       acc[card.questionId] = card;
       return acc;
     }, {} as { [questionId: string]: Card });
 
+    console.log("loadAllCards: Mapped cards:", cardsMap);
     return cardsMap;
 
   } catch (error) {
-    console.error("Error in loadAllCards:", error);
+    console.error("loadAllCards: Error in loadAllCards catch block:", error);
     return {};
   }
 };
@@ -51,18 +54,19 @@ export const loadAllCards = async (): Promise<{ [questionId: string]: Card }> =>
 export const saveCards = async (cardsToSave: Card[]) => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || cardsToSave.length === 0) {
+    console.log("saveCards: No user session or no cards to save.");
     return;
   }
 
   try {
-    // キャメルケースからスネークケースへ手動で変換
+    console.log("saveCards: Saving cards for user:", user.id, "Cards to save count:", cardsToSave.length);
     const recordsToUpsert = cardsToSave.map(card => ({
       user_id: user.id,
       question_id: card.questionId,
       interval: card.interval,
       repetitions: card.repetitions,
       ease_factor: card.easeFactor,
-      due_date: new Date(card.dueDate).toISOString(), // 数値をISO文字列に変換
+      due_date: new Date(card.dueDate).toISOString(),
       last_reviewed: card.lastReviewed ? new Date(card.lastReviewed).toISOString() : null,
       consecutive_correct_answers: card.consecutiveCorrectAnswers,
       needs_review: card.needsReview,
@@ -71,16 +75,18 @@ export const saveCards = async (cardsToSave: Card[]) => {
       total_count: card.total_count,
     }));
 
-    // 'user_id'と'question_id'の複合ユニークキーで競合を判断してupsert
+    console.log("saveCards: Records to upsert:", recordsToUpsert);
+
     const { error } = await supabase.from('cards').upsert(recordsToUpsert, {
       onConflict: 'user_id,question_id'
     });
 
     if (error) {
-      console.error("Error saving cards to DB:", error);
+      console.error("saveCards: Error saving cards to DB:", error);
       throw error;
     }
+    console.log("saveCards: Cards saved successfully.");
   } catch (error) {
-    console.error("Error in saveCards:", error);
+    console.error("saveCards: Error in saveCards catch block:", error);
   }
 };
