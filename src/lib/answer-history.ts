@@ -18,6 +18,7 @@ export async function saveAnswerLog(answer: UserAnswer, question: Question, sess
       is_correct: answer.isCorrect,
       subject: question.category, // Use category from question
       session_id: sessionId,
+      grade: answer.grade,
     });
 
   if (error) {
