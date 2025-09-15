@@ -199,36 +199,12 @@ export default function Quiz() {
   }
 
   if (!unit || questions.length === 0) {
-    // デバッグ情報を収集
-    const searchParams = new URLSearchParams(location.search);
-    const levelsParam = searchParams.get("levels");
-    const selectedLevels = levelsParam ? levelsParam.split(",") : [];
-    const debugInfo = {
-      message: "デバッグ情報。この内容をコピーして開発者に送ってください。",
-      timestamp: new Date().toISOString(),
-      unitId,
-      locationSearch: location.search,
-      levelsParam,
-      selectedLevels,
-      allCardsFromState: cards,
-      numberOfCards: Object.keys(cards).length,
-      questionsLength: questions.length,
-      unitExists: !!unit,
-    };
-
     return (
-      <div className="min-h-screen gradient-learning p-4 sm:p-8 text-white">
-        <div className="container mx-auto">
-          <h1 className="text-2xl font-bold mb-4">クイズが見つかりません</h1>
-          <p className="text-slate-300 mb-4">選択したレベルの問題がないか、単元が見つかりませんでした。</p>
-          <Button onClick={() => navigate('/')} variant="secondary">ホームに戻る</Button>
-          <div className="mt-6 p-4 bg-black/60 rounded-lg border border-slate-700">
-            <h2 className="text-lg font-bold mb-2 text-yellow-300">デバッグ情報</h2>
-            <p className="text-sm text-slate-400 mb-4">問題解決のため、以下の内容をコピーして開発者にお知らせください。</p>
-            <pre className="text-xs whitespace-pre-wrap break-all p-3 bg-slate-900 rounded-md">
-              {JSON.stringify(debugInfo, null, 2)}
-            </pre>
-          </div>
+      <div className="min-h-screen flex items-center justify-center gradient-learning">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">クイズが見つかりません</h1>
+          <p className="text-muted-foreground mb-4">選択したレベルの問題がないか、単元が見つかりませんでした。</p>
+          <Button onClick={() => navigate('/')}>ホームに戻る</Button>
         </div>
       </div>
     );
