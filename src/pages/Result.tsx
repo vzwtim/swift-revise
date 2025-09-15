@@ -1,4 +1,4 @@
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProgressRing } from "@/components/ui/progress-ring";
@@ -11,17 +11,38 @@ import {
   RotateCcw, 
   Home,
   Calendar,
-  Brain
+  Brain,
+  AlertCircle,
+  XCircle
 } from "lucide-react";
+import { Question, UserAnswer } from "@/lib/types";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 export default function Result() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Get session data from state, with fallback to URL params
+  const sessionQuestions: Question[] = location.state?.questions || [];
+  const sessionAnswers: UserAnswer[] = location.state?.answers || [];
   
   const score = parseInt(searchParams.get('score') || '0');
-  const total = parseInt(searchParams.get('total') || '0');
-  const correct = parseInt(searchParams.get('correct') || '0');
-  
+  const total = sessionQuestions.length > 0 ? sessionQuestions.length : parseInt(searchParams.get('total') || '0');
+  const correct = sessionAnswers.length > 0 ? sessionAnswers.filter(a => a.isCorrect).length : parseInt(searchParams.get('correct') || '0');
+
+  const incorrectAnswers = sessionAnswers.filter(a => !a.isCorrect);
+  const incorrectQuestions = incorrectAnswers.map(answer => {
+    const question = sessionQuestions.find(q => q.id === answer.questionId);
+    // Make sure to return an object that includes the user's answer
+    return { ...question, userAnswer: answer };
+  }).filter(q => q.id); // Filter out any undefined questions
+
   const getPerformanceLevel = (score: number) => {
     if (score >= 90) return { level: "優秀", color: "bg-success", emoji: "🏆" };
     if (score >= 80) return { level: "良好", color: "bg-primary", emoji: "🎯" };
@@ -44,7 +65,7 @@ export default function Result() {
 
   return (
     <div className="min-h-screen gradient-learning">
-      <header className="border-b bg-background/80 backdrop-blur-sm">
+      <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
             <div className="p-2 gradient-primary rounded-lg text-primary-foreground">
@@ -52,7 +73,7 @@ export default function Result() {
             </div>
             <div>
               <h1 className="text-lg font-semibold">学習結果</h1>
-              <p className="text-sm text-muted-foreground">スコア分析と次回復習予定</p>
+              <p className="text-sm text-muted-foreground">スコア分析と間違えた問題の復習</p>
             </div>
           </div>
         </div>
@@ -81,6 +102,51 @@ export default function Result() {
             </CardHeader>
           </Card>
 
+          {/* 間違えた問題の復習 */}
+          {incorrectQuestions.length > 0 && (
+            <Card className="card-elevated">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-destructive">
+                  <AlertCircle className="h-5 w-5" />
+                  間違えた問題の復習
+                </CardTitle>
+                <p className="text-sm text-muted-foreground pt-1">
+                  間違えた問題をチェックして、知識を確実に定着させましょう。
+                </p>
+              </CardHeader>
+              <CardContent>
+                <Accordion type="single" collapsible className="w-full">
+                  {incorrectQuestions.map((q, index) => (
+                    <AccordionItem value={`item-${index}`} key={q.id}>
+                      <AccordionTrigger>
+                        <div className="flex items-center gap-3 text-left">
+                          <XCircle className="h-5 w-5 text-destructive flex-shrink-0" />
+                          <span className="flex-1">{q.question}</span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="space-y-4 pt-4">
+                        <div>
+                          <h4 className="font-semibold mb-2">解説：</h4>
+                          <p className="text-sm text-muted-foreground">{q.explanation}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <Badge variant="secondary">正解</Badge>
+                            <p className="mt-1 p-2 bg-muted rounded">{q.choices?.[q.answer || 0]}</p>
+                          </div>
+                          <div>
+                            <Badge variant="destructive">あなたの回答</Badge>
+                            <p className="mt-1 p-2 bg-destructive/10 text-destructive-foreground rounded">{q.choices?.[q.userAnswer?.answer || 0]}</p>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </CardContent>
+            </Card>
+          )}
+
           {/* 詳細分析 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="card-elevated">
@@ -92,7 +158,7 @@ export default function Result() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-primary mb-1">
-                  {Math.round((correct / total) * 100)}%
+                  {total > 0 ? Math.round((correct / total) * 100) : 0}%
                 </div>
                 <p className="text-sm text-muted-foreground">
                   目標は80%以上です
@@ -194,7 +260,7 @@ export default function Result() {
               ホームに戻る
             </Button>
             <Button 
-              onClick={() => window.history.back()}
+              onClick={() => navigate(-1)} // Go back to quiz setup
               variant="outline"
               className="flex-1 gap-2"
               size="lg"

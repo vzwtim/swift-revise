@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 import { SpacedRepetitionScheduler } from "@/lib/scheduler";
 import { UserAnswer, Card, Question, Unit } from "@/lib/types";
-import { ArrowLeft, RotateCcw } from "lucide-react";
+import { ArrowLeft, RotateCcw, Home } from "lucide-react";
 import { saveAnswerLog } from "@/lib/answer-history";
 import { initializeCards, buildQuizQuestions } from "@/lib/quiz-builder";
 
@@ -169,7 +169,10 @@ export default function Quiz() {
   const handleFinish = () => {
     if (unitId) clearIncompleteQuiz(unitId);
     const score = answers.length > 0 ? Math.round((answers.filter((a) => a.isCorrect).length / answers.length) * 100) : 0;
-    navigate(`/result?score=${score}&total=${questions.length}&correct=${answers.filter((a) => a.isCorrect).length}`);
+    navigate(
+      `/result?score=${score}&total=${questions.length}&correct=${answers.filter((a) => a.isCorrect).length}`,
+      { state: { questions, answers } }
+    );
   };
 
   if (isLoading) {
@@ -296,6 +299,10 @@ export default function Quiz() {
               <Button onClick={handleRestart} variant="outline" className="w-full gap-2">
                 <RotateCcw className="h-4 w-4" />
                 もう一度挑戦
+              </Button>
+              <Button onClick={() => navigate('/')} variant="secondary" className="w-full gap-2">
+                <Home className="h-4 w-4" />
+                ホームに戻る
               </Button>
             </div>
           </div>

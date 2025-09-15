@@ -53,12 +53,21 @@ export default function SubjectList() {
 
       if (user) {
         try {
-          // TODO: This needs to be category-specific
-          const { data, error } = await supabase.rpc('get_my_stats').single();
-          if (error) console.error('Error fetching user stats:', error);
-          else if (data) setStats(data);
+          // Fetch all answer logs for the user to calculate stats client-side
+          const { data, error } = await supabase
+            .from('answer_logs')
+            .select('is_correct')
+            .eq('user_id', user.id);
+
+          if (error) {
+            console.error('Error fetching answer logs:', error);
+          } else if (data) {
+            const total_answers = data.length;
+            const correct_answers = data.filter(log => log.is_correct).length;
+            setStats({ total_answers, correct_answers });
+          }
         } catch (error) {
-          console.error('Error fetching user stats:', error);
+          console.error('Error calculating user stats:', error);
         }
       }
 
