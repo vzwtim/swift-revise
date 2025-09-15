@@ -45,7 +45,6 @@ export default function Profile() {
       const { data, error } = await supabase.rpc('get_my_stats').single();
       if (error) throw error;
       if (data) {
-        console.log('Fetched user stats:', data);
         setStats(data);
       }
     } catch (error) {
