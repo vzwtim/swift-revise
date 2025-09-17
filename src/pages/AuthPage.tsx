@@ -36,6 +36,7 @@ const AuthPage = () => {
           appearance={{ theme: ThemeSupa }}
           providers={['google']}
           showLinks={false}
+          onlyThirdPartyProviders={true}
           localization={{
             variables: {
               sign_in: {
