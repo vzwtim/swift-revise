@@ -3,8 +3,12 @@ create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer set search_path = public
-as $$
+as $
 begin
+  -- Debug: Insert raw user meta data into the debug table
+  insert into public.debug_raw_user_meta (user_id, meta_data)
+  values (new.id, new.raw_user_meta_data);
+
   insert into public.profiles (id, username, avatar_url)
   values (
     new.id,
@@ -13,7 +17,7 @@ begin
   );
   return new;
 end;
-$$;
+$;
 
 -- Trigger to call the function after a new user is created
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
