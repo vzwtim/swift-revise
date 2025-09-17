@@ -265,27 +265,41 @@ export default function SubjectList() {
       <main className="container mx-auto px-4 py-8">
         {authLoading || (session && isLoading) ? (
           <p>Loading...</p> // Replace with skeleton
-        ) : !session ? (
-          <div className="text-center py-16 bg-background/30 rounded-xl">
-            <h2 className="text-2xl font-bold mb-2">ようこそ StudyFlow へ</h2>
-            <p className="text-muted-foreground mb-6">学習の記録・分析・競争機能を利用するには、ログインしてください。</p>
-            <Button onClick={() => navigate('/auth')}>
-              <LogIn className="mr-2 h-4 w-4" />
-              ログイン / 新規登録
-            </Button>
-          </div>
         ) : (
           <>
-            <div className="mb-8">
-              <RankingCard />
-            </div>
+            {!session && (
+              <Card className="mb-8 text-center py-8 card-elevated">
+                <CardHeader>
+                  <CardTitle className="text-2xl font-bold">今日の10問に挑戦</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground mb-6">
+                    ログインなしで毎日10問のクイズに挑戦できます。<br />力試しにどうぞ！
+                  </p>
+                  <Button size="lg" onClick={() => navigate('/daily-challenge')} className="gradient-primary">
+                    <CalendarCheck className="mr-2 h-5 w-5" />
+                    挑戦する
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
 
+            {session && (
+              <>
+                <div className="mb-8">
+                  <RankingCard />
+                </div>
+              </>
+            )}
+            
             <div className="mb-8 flex justify-between items-center">
               <h2 className="text-2xl font-bold">学習カテゴリ</h2>
-              <Button onClick={() => setIsBulkStudyOpen(true)} variant="outline" className="gap-2">
-                <RefreshCw className="h-4 w-4" />
-                まとめて学習
-              </Button>
+              {session && (
+                <Button onClick={() => setIsBulkStudyOpen(true)} variant="outline" className="gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  まとめて学習
+                </Button>
+              )}
             </div>
             <div className="space-y-12">
               {Object.keys(groupedSubjects).length > 0 ? (
@@ -299,6 +313,7 @@ export default function SubjectList() {
                           subject={subject}
                           progressCounts={subject.progressCounts}
                           onStartLearning={handleStartLearning}
+                          isLoggedIn={!!session}
                         />
                       ))}
                     </div>
@@ -307,25 +322,28 @@ export default function SubjectList() {
               ) : (
                 <div className="text-center py-12 bg-background/30 rounded-xl">
                   <h3 className="text-xl font-bold mb-2">学習カテゴリが選択されていません</h3>
-                  <p className="text-muted-foreground mb-6">プロフィール編集画面から、学習したいカテゴリを選択してください。</p>
-                  <Button onClick={() => navigate('/profile')}>
+                  <p className="text-muted-foreground mb-6">右上のメニューから、学習したいカテゴリを選択してください。</p>
+                  <Button onClick={() => navigate('/profile')} disabled={!session}>
                     <User className="mr-2 h-4 w-4" />
                     プロフィールを編集
                   </Button>
                 </div>
               )}
             </div>
-            <div className="mt-12">
-              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-primary" />
-                毎日の回答数
-              </h3>
-              <div className="flex items-center gap-2 mb-4">
-                <Label htmlFor="target" className="text-sm">目標</Label>
-                <Input id="target" type="number" value={target} onChange={handleTargetChange} className="w-24 h-8" />
+            
+            {session && (
+              <div className="mt-12">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  毎日の回答数
+                </h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <Label htmlFor="target" className="text-sm">目標</Label>
+                  <Input id="target" type="number" value={target} onChange={handleTargetChange} className="w-24 h-8" />
+                </div>
+                <DailyProgressChart target={target} />
               </div>
-              <DailyProgressChart target={target} />
-            </div>
+            )}
           </>
         )}
       </main>

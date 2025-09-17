@@ -8,7 +8,7 @@ begin
   insert into public.profiles (id, username, avatar_url)
   values (
     new.id,
-    coalesce(new.raw_user_meta_data ->> 'name', '名無しさん'),
+    coalesce(new.raw_user_meta_data ->> 'full_name', new.raw_user_meta_data ->> 'name', '名無しさん'),
     new.raw_user_meta_data ->> 'avatar_url'
   );
   return new;

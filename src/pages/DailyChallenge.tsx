@@ -4,7 +4,7 @@ import { QuizCard } from "@/components/quiz-card";
 import { Button } from "@/components/ui/button";
 import { subjects } from "@/data/questions";
 import { UserAnswer, Question } from "@/lib/types";
-import { ArrowLeft, RotateCcw } from "lucide-react";
+import { ArrowLeft, RotateCcw, LogIn } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -99,10 +99,25 @@ export default function DailyChallenge() {
   if (questions.length === 0) {
     return (
       <div className="min-h-screen gradient-learning flex items-center justify-center">
-        <div className="text-center p-8">
+        <div className="text-center p-8 max-w-md mx-auto">
           <h2 className="text-2xl font-bold mb-2">問題が見つかりません</h2>
-          <p className="text-muted-foreground mb-6">選択中の学習カテゴリに問題がないか、カテゴリが選択されていません。</p>
-          <Button onClick={() => navigate('/profile')} className="w-full max-w-xs gradient-primary">プロフィール設定に移動</Button>
+          <p className="text-muted-foreground mb-6">
+            {profile 
+              ? "選択中の学習カテゴリに問題がありません。プロフィール設定からカテゴリを変更してください。"
+              : "出題できる問題がありません。ログインすると、学習中の資格に合わせた問題が出題されます。"
+            }
+          </p>
+          {profile ? (
+            <Button onClick={() => navigate('/profile')} className="w-full max-w-xs gradient-primary">プロフィール設定に移動</Button>
+          ) : (
+            <div className="flex flex-col gap-4 items-center">
+              <Button onClick={() => navigate('/auth')} className="w-full max-w-xs gradient-primary">
+                <LogIn className="mr-2 h-4 w-4" />
+                ログインしてカテゴリを設定
+              </Button>
+              <Button onClick={() => navigate('/')} variant="outline" className="w-full max-w-xs">ホームに戻る</Button>
+            </div>
+          )}
         </div>
       </div>
     );
