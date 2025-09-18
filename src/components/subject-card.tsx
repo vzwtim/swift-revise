@@ -17,11 +17,11 @@ export function SubjectCard({ subject, progressCounts, onStartLearning, isLogged
 
   return (
     <div className="relative h-full">
-      <Card className={`card-elevated group flex flex-col h-full transition-all duration-300 ${!isLoggedIn ? 'blur-sm' : 'hover:shadow-lg'}`}>
+      <Card className={`card-elevated group flex flex-col h-full transition-all duration-300 hover:shadow-lg`}>
         <CardHeader className="pb-4">
           <div className="flex items-start justify-between">
             <div className="flex-1 pr-4">
-              <CardTitle className={`text-lg font-semibold transition-colors ${isLoggedIn ? 'group-hover:text-primary' : ''}`}>
+              <CardTitle className={`text-lg font-semibold transition-colors group-hover:text-primary`}>
                 {subject.name}
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
@@ -58,21 +58,11 @@ export function SubjectCard({ subject, progressCounts, onStartLearning, isLogged
             onClick={() => onStartLearning(subject.id)}
             className="w-full gradient-primary hover:opacity-90 transition-opacity mt-4"
             size="sm"
-            disabled={!isLoggedIn}
           >
             学習を開始
           </Button>
         </CardContent>
       </Card>
-      {!isLoggedIn && (
-        <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] flex flex-col items-center justify-center rounded-xl z-10 p-4 text-center">
-          <p className="font-bold text-lg mb-4 text-foreground">ログインが必要です</p>
-          <Button onClick={() => navigate('/auth')} size="sm">
-            <LogIn className="mr-2 h-4 w-4" />
-            ログイン / 新規登録
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

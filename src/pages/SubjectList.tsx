@@ -130,9 +130,16 @@ export default function SubjectList() {
     await updateStudyingCategories(newCategories);
   };
 
-  const filteredSubjects = subjects.filter(subject => 
-    !session || !profile || !profile.studying_categories || profile.studying_categories.includes(subject.category)
-  );
+  const filteredSubjects = subjects.filter(subject => {
+    // If logged out, show all.
+    if (!session) return true;
+    // If logged in, but no profile or no categories set, show all.
+    if (!profile || !profile.studying_categories || profile.studying_categories.length === 0) {
+        return true;
+    }
+    // If logged in and categories are set, filter by them.
+    return profile.studying_categories.includes(subject.category);
+  });
 
   const updatedSubjects = filteredSubjects.map(subject => {
     const subjectQuestionIds = new Set(
@@ -274,7 +281,7 @@ export default function SubjectList() {
               </div>
             )}
             
-            <div className="mb-8 flex justify-between items-center">
+            <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-2xl font-bold">学習カテゴリ</h2>
               <div className="flex items-center gap-2">
                 {session && (
@@ -337,17 +344,8 @@ export default function SubjectList() {
                 ))
               ) : (
                  <div className="text-center py-12 bg-background/30 rounded-xl">
-                  <h3 className="text-xl font-bold mb-2">学習カテゴリを選択してください</h3>
-                  <p className="text-muted-foreground mb-6">右上のメニューから、学習したいカテゴリを選択すると、単元が表示されます。</p>
-                  <Button onClick={() => {
-                    const trigger = document.querySelector('[aria-label="Open user menu"]');
-                    if (trigger instanceof HTMLElement) {
-                      trigger.click();
-                    }
-                  }} disabled={!session}>
-                    <User className="mr-2 h-4 w-4" />
-                    カテゴリを選択
-                  </Button>
+                  <h3 className="text-xl font-bold mb-2">利用可能な学習カテゴリがありません</h3>
+                  <p className="text-muted-foreground mb-6">現在、学習できるコンテンツが準備中です。</p>
                 </div>
               )}
             </div>
