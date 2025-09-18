@@ -226,18 +226,18 @@ export default function SubjectList() {
           </div>
           <div className="flex items-center gap-4 text-sm">
             {session && (
-              <>
-                <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-4">
+                <div className="flex items-center gap-2" title="進捗">
                   <BarChart3 className="h-4 w-4" />
-                  <span>進捗: {overallProgress}%</span>
+                  <span>{overallProgress}%</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" title="総回答数">
                   <span>総回答数: {stats ? stats.total_answers : '-'}</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" title="正解率">
                   <span>正解率: {stats && stats.total_answers > 0 ? `${Math.round((stats.correct_answers / stats.total_answers) * 100)}%` : '0%'}</span>
                 </div>
-              </>
+              </div>
             )}
             {authLoading ? (
               <Skeleton className="h-8 w-8 rounded-full" />
@@ -251,6 +251,30 @@ export default function SubjectList() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
+
+                  {/* Mobile-only stats */}
+                  <div className="sm:hidden">
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="focus:bg-transparent">
+                      <div className="flex items-center justify-between w-full text-sm">
+                        <span className="text-muted-foreground">進捗</span>
+                        <span className="font-semibold">{overallProgress}%</span>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="focus:bg-transparent">
+                      <div className="flex items-center justify-between w-full text-sm">
+                        <span className="text-muted-foreground">総回答数</span>
+                        <span className="font-semibold">{stats ? stats.total_answers : '-'}</span>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="focus:bg-transparent">
+                      <div className="flex items-center justify-between w-full text-sm">
+                        <span className="text-muted-foreground">正解率</span>
+                        <span className="font-semibold">{stats && stats.total_answers > 0 ? `${Math.round((stats.correct_answers / stats.total_answers) * 100)}%` : '0%'}</span>
+                      </div>
+                    </DropdownMenuItem>
+                  </div>
+
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate('/forum')} className="cursor-pointer">
                     <MessageSquare className="mr-2 h-4 w-4" />
