@@ -51,11 +51,29 @@ export default function SubjectList() {
   const [quizTarget, setQuizTarget] = useState({ id: '', title: '', description: '' });
   const [selectedBulkStudyUnitIds, setSelectedBulkStudyUnitIds] = useState<string[]>([]);
   const [stats, setStats] = useState<{ total_answers: number; correct_answers: number } | null>(null);
+  const [localStudyingCategories, setLocalStudyingCategories] = useState<string[]>([]);
+
+  // Load local categories on mount if not logged in
+  useEffect(() => {
+    if (!session) {
+      try {
+        const localCategories = localStorage.getItem('studying_categories');
+        if (localCategories) {
+          setLocalStudyingCategories(JSON.parse(localCategories));
+        } else {
+          // Default to all categories if nothing is in localStorage
+          setLocalStudyingCategories(AVAILABLE_CATEGORIES.map(c => c.id));
+        }
+      } catch (error) {
+        console.error("Failed to load local studying categories:", error);
+        setLocalStudyingCategories(AVAILABLE_CATEGORIES.map(c => c.id));
+      }
+    }
+  }, [session]);
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      // Reset stats for re-fetches
       setStats(null);
       setCards({});
 
@@ -120,25 +138,33 @@ export default function SubjectList() {
   };
 
   const handleCategoryToggle = async (categoryId: string) => {
-    if (!profile || !profile.studying_categories || !updateStudyingCategories) return;
-
-    const currentCategories = profile.studying_categories;
-    const newCategories = currentCategories.includes(categoryId)
-      ? currentCategories.filter(c => c !== categoryId)
-      : [...currentCategories, categoryId];
-
-    await updateStudyingCategories(newCategories);
+    if (session) {
+      if (!profile || !profile.studying_categories || !updateStudyingCategories) return;
+      const currentCategories = profile.studying_categories;
+      const newCategories = currentCategories.includes(categoryId)
+        ? currentCategories.filter(c => c !== categoryId)
+        : [...currentCategories, categoryId];
+      await updateStudyingCategories(newCategories);
+    } else {
+      const newCategories = localStudyingCategories.includes(categoryId)
+        ? localStudyingCategories.filter(c => c !== categoryId)
+        : [...localStudyingCategories, categoryId];
+      setLocalStudyingCategories(newCategories);
+      try {
+        localStorage.setItem('studying_categories', JSON.stringify(newCategories));
+      } catch (error) {
+        console.error("Failed to save local studying categories:", error);
+      }
+    }
   };
 
+  const activeCategories = session ? (profile?.studying_categories) : localStudyingCategories;
+
   const filteredSubjects = subjects.filter(subject => {
-    // If logged out, show all.
-    if (!session) return true;
-    // If logged in, but no profile or no categories set, show all.
-    if (!profile || !profile.studying_categories || profile.studying_categories.length === 0) {
-        return true;
+    if (!activeCategories || activeCategories.length === 0) {
+      return true; // Show all if no categories are set (or on initial load)
     }
-    // If logged in and categories are set, filter by them.
-    return profile.studying_categories.includes(subject.category);
+    return activeCategories.includes(subject.category);
   });
 
   const updatedSubjects = filteredSubjects.map(subject => {
@@ -284,44 +310,40 @@ export default function SubjectList() {
             <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-2xl font-bold">学習カテゴリ</h2>
               <div className="flex items-center gap-2">
-                {session && (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="gap-2">
-                        <Filter className="h-4 w-4" />
-                        表示カテゴリ設定
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80">
-                      <div className="grid gap-4">
-                        <div className="space-y-2">
-                          <h4 className="font-medium leading-none">表示する資格</h4>
-                          <p className="text-sm text-muted-foreground">
-                            ホームに表示する資格を選択します。
-                          </p>
-                        </div>
-                        <div className="grid gap-2">
-                          {AVAILABLE_CATEGORIES.map(category => (
-                            <div key={category.id} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={category.id}
-                                checked={profile?.studying_categories?.includes(category.id)}
-                                onCheckedChange={() => handleCategoryToggle(category.id)}
-                              />
-                              <Label htmlFor={category.id} className="font-normal">{category.name}</Label>
-                            </div>
-                          ))}
-                        </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="gap-2">
+                      <Filter className="h-4 w-4" />
+                      表示カテゴリ設定
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80">
+                    <div className="grid gap-4">
+                      <div className="space-y-2">
+                        <h4 className="font-medium leading-none">表示する資格</h4>
+                        <p className="text-sm text-muted-foreground">
+                          ホームに表示する資格を選択します。
+                        </p>
                       </div>
-                    </PopoverContent>
-                  </Popover>
-                )}
-                {session && (
-                  <Button onClick={() => setIsBulkStudyOpen(true)} variant="outline" className="gap-2">
-                    <RefreshCw className="h-4 w-4" />
-                    まとめて学習
-                  </Button>
-                )}
+                      <div className="grid gap-2">
+                        {AVAILABLE_CATEGORIES.map(category => (
+                          <div key={category.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={category.id}
+                              checked={activeCategories?.includes(category.id)}
+                              onCheckedChange={() => handleCategoryToggle(category.id)}
+                            />
+                            <Label htmlFor={category.id} className="font-normal">{category.name}</Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                <Button onClick={() => setIsBulkStudyOpen(true)} variant="outline" className="gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  まとめて学習
+                </Button>
               </div>
             </div>
             <div className="space-y-12">
