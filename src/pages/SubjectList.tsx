@@ -6,6 +6,7 @@ import { DailyProgressChart } from "@/components/daily-progress-chart";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -268,20 +269,18 @@ export default function SubjectList() {
         ) : (
           <>
             {!session && (
-              <Card className="mb-8 text-center py-8 card-elevated">
-                <CardHeader>
-                  <CardTitle className="text-2xl font-bold">今日の10問に挑戦</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground mb-6">
-                    ログインなしで毎日10問のクイズに挑戦できます。<br />力試しにどうぞ！
+              <Alert className="mb-8 card-elevated">
+                <LogIn className="h-4 w-4" />
+                <AlertTitle className="font-bold">学習履歴を記録しませんか？</AlertTitle>
+                <AlertDescription>
+                  <p className="mb-4">
+                    ログインすると、学習の進捗が記録され、苦手な問題を効率的に復習できます。
                   </p>
-                  <Button size="lg" onClick={() => navigate('/daily-challenge')} className="gradient-primary">
-                    <CalendarCheck className="mr-2 h-5 w-5" />
-                    挑戦する
+                  <Button onClick={() => navigate('/auth')}>
+                    ログイン / 新規登録
                   </Button>
-                </CardContent>
-              </Card>
+                </AlertDescription>
+              </Alert>
             )}
 
             {session && (
@@ -294,12 +293,24 @@ export default function SubjectList() {
             
             <div className="mb-8 flex justify-between items-center">
               <h2 className="text-2xl font-bold">学習カテゴリ</h2>
-              {session && (
-                <Button onClick={() => setIsBulkStudyOpen(true)} variant="outline" className="gap-2">
-                  <RefreshCw className="h-4 w-4" />
-                  まとめて学習
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                {session && profile?.studying_categories?.includes('ares') && (
+                    <Button onClick={() => navigate('/subjects/ares')} variant="ghost" size="sm" className="gap-1 text-muted-foreground">
+                        <BookOpen className="h-4 w-4" /> ARES
+                    </Button>
+                )}
+                {session && profile?.studying_categories?.includes('takken') && (
+                    <Button onClick={() => navigate('/subjects/takken')} variant="ghost" size="sm" className="gap-1 text-muted-foreground">
+                        <BookOpen className="h-4 w-4" /> 宅建
+                    </Button>
+                )}
+                {session && (
+                  <Button onClick={() => setIsBulkStudyOpen(true)} variant="outline" className="gap-2">
+                    <RefreshCw className="h-4 w-4" />
+                    まとめて学習
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="space-y-12">
               {Object.keys(groupedSubjects).length > 0 ? (
