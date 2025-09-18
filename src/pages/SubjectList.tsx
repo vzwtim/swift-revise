@@ -1,7 +1,7 @@
 import { SubjectCard } from "@/components/subject-card";
 import { RankingCard } from "@/components/ranking-card";
 import { subjects } from "@/data/questions";
-import { GraduationCap, BarChart3, RefreshCw, BookOpen, LogIn, LogOut, User, CalendarCheck, MessageSquare, Check } from "lucide-react";
+import { GraduationCap, BarChart3, RefreshCw, BookOpen, LogIn, LogOut, User, CalendarCheck, MessageSquare, Check, Filter } from "lucide-react";
 import { DailyProgressChart } from "@/components/daily-progress-chart";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -19,6 +19,12 @@ import { BulkStudyDialog } from "@/components/bulk-study-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,17 +53,16 @@ export default function SubjectList() {
   const [stats, setStats] = useState<{ total_answers: number; correct_answers: number } | null>(null);
 
   useEffect(() => {
-    if (!session) {
-      setIsLoading(false);
-      return;
-    }
-
     const fetchData = async () => {
       setIsLoading(true);
-      const loadedCards = await loadAllCards();
-      setCards(loadedCards);
+      // Reset stats for re-fetches
+      setStats(null);
+      setCards({});
 
-      if (user) {
+      if (session && user) {
+        const loadedCards = await loadAllCards();
+        setCards(loadedCards);
+
         try {
           const { data, error } = await supabase
             .from('answer_logs')
@@ -75,7 +80,6 @@ export default function SubjectList() {
           console.error('Error calculating user stats:', error);
         }
       }
-
       setIsLoading(false);
     };
     fetchData();
@@ -127,7 +131,7 @@ export default function SubjectList() {
   };
 
   const filteredSubjects = subjects.filter(subject => 
-    !profile || !profile.studying_categories || profile.studying_categories.includes(subject.category)
+    !session || !profile || !profile.studying_categories || profile.studying_categories.includes(subject.category)
   );
 
   const updatedSubjects = filteredSubjects.map(subject => {
@@ -215,25 +219,6 @@ export default function SubjectList() {
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">学習中の資格</DropdownMenuLabel>
-                  {AVAILABLE_CATEGORIES.map(category => (
-                    <DropdownMenuItem
-                      key={category.id}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleCategoryToggle(category.id);
-                      }}
-                      className="cursor-pointer"
-                    >
-                      <div className="w-6 mr-2 flex items-center justify-center">
-                        {profile?.studying_categories?.includes(category.id) && (
-                          <Check className="h-4 w-4" />
-                        )}
-                      </div>
-                      <span>{category.name}</span>
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate('/forum')} className="cursor-pointer">
                     <MessageSquare className="mr-2 h-4 w-4" />
                     <span>掲示板</span>
@@ -264,7 +249,7 @@ export default function SubjectList() {
     <div className="min-h-screen gradient-learning">
       {renderHeader()}
       <main className="container mx-auto px-4 py-8">
-        {authLoading || (session && isLoading) ? (
+        {authLoading || isLoading ? (
           <p>Loading...</p> // Replace with skeleton
         ) : (
           <>
@@ -284,25 +269,45 @@ export default function SubjectList() {
             )}
 
             {session && (
-              <>
-                <div className="mb-8">
-                  <RankingCard />
-                </div>
-              </>
+              <div className="mb-8">
+                <RankingCard />
+              </div>
             )}
             
             <div className="mb-8 flex justify-between items-center">
               <h2 className="text-2xl font-bold">学習カテゴリ</h2>
               <div className="flex items-center gap-2">
-                {session && profile?.studying_categories?.includes('ares') && (
-                    <Button onClick={() => navigate('/subjects/ares')} variant="ghost" size="sm" className="gap-1 text-muted-foreground">
-                        <BookOpen className="h-4 w-4" /> ARES
-                    </Button>
-                )}
-                {session && profile?.studying_categories?.includes('takken') && (
-                    <Button onClick={() => navigate('/subjects/takken')} variant="ghost" size="sm" className="gap-1 text-muted-foreground">
-                        <BookOpen className="h-4 w-4" /> 宅建
-                    </Button>
+                {session && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="gap-2">
+                        <Filter className="h-4 w-4" />
+                        表示カテゴリ設定
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80">
+                      <div className="grid gap-4">
+                        <div className="space-y-2">
+                          <h4 className="font-medium leading-none">表示する資格</h4>
+                          <p className="text-sm text-muted-foreground">
+                            ホームに表示する資格を選択します。
+                          </p>
+                        </div>
+                        <div className="grid gap-2">
+                          {AVAILABLE_CATEGORIES.map(category => (
+                            <div key={category.id} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={category.id}
+                                checked={profile?.studying_categories?.includes(category.id)}
+                                onCheckedChange={() => handleCategoryToggle(category.id)}
+                              />
+                              <Label htmlFor={category.id} className="font-normal">{category.name}</Label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 )}
                 {session && (
                   <Button onClick={() => setIsBulkStudyOpen(true)} variant="outline" className="gap-2">
@@ -331,12 +336,17 @@ export default function SubjectList() {
                   </div>
                 ))
               ) : (
-                <div className="text-center py-12 bg-background/30 rounded-xl">
-                  <h3 className="text-xl font-bold mb-2">学習カテゴリが選択されていません</h3>
-                  <p className="text-muted-foreground mb-6">右上のメニューから、学習したいカテゴリを選択してください。</p>
-                  <Button onClick={() => navigate('/profile')} disabled={!session}>
+                 <div className="text-center py-12 bg-background/30 rounded-xl">
+                  <h3 className="text-xl font-bold mb-2">学習カテゴリを選択してください</h3>
+                  <p className="text-muted-foreground mb-6">右上のメニューから、学習したいカテゴリを選択すると、単元が表示されます。</p>
+                  <Button onClick={() => {
+                    const trigger = document.querySelector('[aria-label="Open user menu"]');
+                    if (trigger instanceof HTMLElement) {
+                      trigger.click();
+                    }
+                  }} disabled={!session}>
                     <User className="mr-2 h-4 w-4" />
-                    プロフィールを編集
+                    カテゴリを選択
                   </Button>
                 </div>
               )}
