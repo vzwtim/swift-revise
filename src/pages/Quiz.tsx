@@ -38,7 +38,7 @@ export default function Quiz() {
   const [sessionId] = useState(() => crypto.randomUUID());
   const [unit, setUnit] = useState<Unit | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [initialMasteryLevels, setInitialMasteryLevels] = useState<{ [questionId: string]: any }>({});
+
   const [isLoading, setIsLoading] = useState(true);
   const [feedback, setFeedback] = useState<{ show: boolean; correct: boolean } | null>(null);
 
@@ -66,13 +66,7 @@ export default function Quiz() {
       setUnit({ id: unitId, name: pageTitle, description: pageDescription, subjectId: "", questions: questionsToShow, dueCards: 0, newCards: questionsToShow.length });
       setQuestions(questionsToShow);
 
-      // ハードコードされた正しいステータス名のダミーデータを生成
-      const dummyLevels: { [questionId: string]: any } = {};
-      questionsToShow.forEach((question, index) => {
-        const levels = ['Perfect', 'Great', 'Good', 'Bad', 'Miss', 'New'];
-        dummyLevels[question.id] = levels[index % 6];
-      });
-      setInitialMasteryLevels(dummyLevels);
+
 
       if (questionsToShow.length > 0) {
         const lastIndex = getLastQuestionIndex(unitId);
@@ -105,14 +99,23 @@ export default function Quiz() {
     const isCorrect = answer === currentQuestion.answer;
     setFeedback({ show: true, correct: isCorrect });
 
-    const grade = SpacedRepetitionScheduler.calculateGrade({ questionId: currentQuestion.id, answer, timeSpent, isCorrect, grade: 0 });
-    const userAnswer: UserAnswer = { questionId: currentQuestion.id, answer, timeSpent, isCorrect, grade };
+    // Create the UserAnswer object first
+    const userAnswer: UserAnswer = { 
+      questionId: currentQuestion.id, 
+      answer, 
+      timeSpent, 
+      isCorrect, 
+      grade: 0 // grade will be calculated next, so this is a placeholder
+    };
 
-    setAnswers((prev) => [...prev, userAnswer]);
+    // Calculate the grade (0, 1, or 2) using the new scheduler logic
+    const grade = SpacedRepetitionScheduler.calculateGrade(userAnswer);
+
+    setAnswers((prev) => [...prev, { ...userAnswer, grade: grade }]); // Store the correct grade
     setShowResult(true);
     
     try {
-      await saveAnswerLog(userAnswer, currentQuestion, sessionId);
+      await saveAnswerLog({ ...userAnswer, grade: grade }, currentQuestion, sessionId);
       const originalCard = cards[currentQuestion.id];
       if (originalCard) {
         let updatedCard = { ...originalCard };
@@ -120,6 +123,7 @@ export default function Quiz() {
         if (isCorrect) {
           updatedCard.correct_count += 1;
         }
+        // Schedule the card using the correct grade to get the updated masteryLevel
         updatedCard = SpacedRepetitionScheduler.scheduleCard(updatedCard, grade);
         setCards((prev) => ({ ...prev, [currentQuestion.id]: updatedCard }));
         await saveCards([updatedCard]);
@@ -274,7 +278,8 @@ export default function Quiz() {
                   </SelectTrigger>
                   <SelectContent>
                     {questions.map((question, index) => {
-                      const masteryLevel = initialMasteryLevels[question.id];
+                      const card = cards[question.id];
+                      const masteryLevel = card?.masteryLevel || 'new';
                       return (
                         <SelectItem key={index} value={String(index)}>
                           <div className="flex items-center">
