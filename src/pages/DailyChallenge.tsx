@@ -163,7 +163,7 @@ export default function DailyChallenge() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 pb-32">
+      <main className="container mx-auto px-4 py-8">
         {currentQuestion ? (
           <QuizCard
             question={currentQuestion}
@@ -179,12 +179,10 @@ export default function DailyChallenge() {
         )}
         
         {showResult && (
-          <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm p-4 border-t z-50">
-            <div className="container mx-auto px-4">
-              <Button onClick={handleNext} size="lg" className="w-full gradient-primary">
-                {currentQuestionIndex + 1 >= questions.length ? "結果を見る" : "次の問題"}
-              </Button>
-            </div>
+          <div className="text-center mt-8">
+            <Button onClick={handleNext} size="lg" className="gradient-primary">
+              {currentQuestionIndex + 1 >= questions.length ? "結果を見る" : "次の問題"}
+            </Button>
           </div>
         )}
       </main>

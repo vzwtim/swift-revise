@@ -242,21 +242,6 @@ export default function Quiz() {
 
   const currentQuestion = questions[currentQuestionIndex];
 
-  const getStatusColor = (masteryLevel: string | undefined) => {
-    switch (masteryLevel) {
-      case 'new':
-        return 'bg-gray-400';
-      case 'good':
-        return 'bg-blue-500';
-      case 'mastered':
-        return 'bg-green-500';
-      case 'review':
-        return 'bg-yellow-500';
-      default:
-        return 'bg-gray-200';
-    }
-  };
-
   return (
     <div className="min-h-screen gradient-learning">
       {feedback?.show && (
@@ -284,21 +269,11 @@ export default function Quiz() {
                     <SelectValue placeholder="問題を選択" />
                   </SelectTrigger>
                   <SelectContent>
-                    {questions.map((question, index) => {
-                      const card = localCards[question.id];
-                      const masteryLevel = card?.masteryLevel || 'New';
-                      return (
-                        <SelectItem key={index} value={String(index)}>
-                          <div className="flex items-center justify-between w-full">
-                            <div className="flex items-center">
-                              <span className={`h-2 w-2 rounded-full mr-2 ${getStatusColor(masteryLevel)}`}></span>
-                              <span>{index + 1} 問目</span>
-                            </div>
-                            <span className="text-xs text-muted-foreground">{getMasteryLevelName(masteryLevel)}</span>
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
+                    {questions.map((_, index) => (
+                      <SelectItem key={index} value={String(index)}>
+                        {index + 1} / {questions.length} 問目
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
