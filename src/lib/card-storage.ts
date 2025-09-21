@@ -41,6 +41,8 @@ export const saveCards = async (cardsToSave: Card[]) => {
     return;
   }
 
+  console.log(`[saveCards] Attempting to save ${cardsToSave.length} cards. First 5 questionIds:`, cardsToSave.slice(0, 5).map(c => c.questionId));
+
   try {
     const recordsToUpsert = cardsToSave.map(card => ({
       user_id: user.id,
