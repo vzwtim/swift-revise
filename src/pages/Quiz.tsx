@@ -283,14 +283,17 @@ export default function Quiz() {
                     <SelectValue placeholder="問題を選択" />
                   </SelectTrigger>
                   <SelectContent>
-                    {questions.map((question, index) => (
-                      <SelectItem key={index} value={String(index)}>
-                        <div className="flex items-center">
-                          <span className={`h-2 w-2 rounded-full mr-2 ${getStatusColor(cards[question.id]?.masteryLevel)}`}></span>
-                          <span>{index + 1} / {questions.length} 問目</span>
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {questions.map((question, index) => {
+                      const card = Object.values(cards).find(c => c.questionId === question.id);
+                      return (
+                        <SelectItem key={index} value={String(index)}>
+                          <div className="flex items-center">
+                            <span className={`h-2 w-2 rounded-full mr-2 ${getStatusColor(card?.masteryLevel)}`}></span>
+                            <span>{index + 1} / {questions.length} 問目</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}}
                   </SelectContent>
                 </Select>
               </div>
