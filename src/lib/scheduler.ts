@@ -18,6 +18,7 @@ export class SpacedRepetitionScheduler {
       masteryLevel: "New",
       correct_count: 0,
       total_count: 0,
+      lastReviewed: Date.now(),
     };
   }
 
@@ -53,6 +54,22 @@ export class SpacedRepetitionScheduler {
 
   static scheduleCard(card: Card, grade: 0 | 1 | 2): Card {
     const newCard = { ...card };
+    // Defensive coding: Ensure essential properties are not null/undefined to handle old data structures.
+    if (newCard.easeFactor == null) {
+      newCard.easeFactor = this.INITIAL_EASE_FACTOR;
+    }
+    if (newCard.repetitions == null) {
+      newCard.repetitions = 0;
+    }
+    if (newCard.interval == null) {
+      newCard.interval = 1;
+    }
+    if (newCard.consecutiveCorrectAnswers == null) {
+      newCard.consecutiveCorrectAnswers = 0;
+    }
+    if (newCard.needsReview == null) {
+      newCard.needsReview = true;
+    }
     newCard.lastReviewed = Date.now();
 
     // Update consecutive correct answers and review status

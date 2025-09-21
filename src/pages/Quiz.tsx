@@ -241,7 +241,21 @@ export default function Quiz() {
   }
 
   const currentQuestion = questions[currentQuestionIndex];
-  const currentCard = currentQuestion ? localCards[currentQuestion.id] : null;
+
+  const getStatusColor = (masteryLevel: string | undefined) => {
+    switch (masteryLevel) {
+      case 'new':
+        return 'bg-gray-400';
+      case 'good':
+        return 'bg-blue-500';
+      case 'mastered':
+        return 'bg-green-500';
+      case 'review':
+        return 'bg-yellow-500';
+      default:
+        return 'bg-gray-200';
+    }
+  };
 
   return (
     <div className="min-h-screen gradient-learning">

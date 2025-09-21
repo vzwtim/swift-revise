@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { UnitCard } from "@/components/unit-card";
 import { Button } from "@/components/ui/button";
 import { MasteryPieChart } from "@/components/mastery-pie-chart";
 import { subjects } from "@/data/questions";
 import { ArrowLeft } from "lucide-react";
-import { loadAllCards } from "@/lib/card-storage";
+import { useAuth } from "@/contexts/AuthContext";
 import { QuizSettingsDialog } from "@/components/quiz-settings-dialog";
 import { Card as CardType, MasteryLevel } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,21 +13,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function Subject() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { cards, isCardsLoading } = useAuth();
 
-  const [cards, setCards] = useState<{ [questionId: string]: CardType }>({});
-  const [isLoading, setIsLoading] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [quizTarget, setQuizTarget] = useState({ id: '', title: '', description: '' });
-
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      const loadedCards = await loadAllCards();
-      setCards(loadedCards);
-      setIsLoading(false);
-    };
-    fetchData();
-  }, [id]);
 
   const handleOpenSettings = (targetId: string, title: string, description: string) => {
     setQuizTarget({ id: targetId, title, description });
@@ -36,7 +25,7 @@ export default function Subject() {
 
   const subject = subjects.find((s) => s.id === id);
 
-  if (isLoading) {
+  if (isCardsLoading) {
     return (
       <div className="min-h-screen gradient-learning p-4 sm:p-8">
         <header className="container mx-auto"><Skeleton className="h-10 w-48" /></header>
@@ -66,17 +55,12 @@ export default function Subject() {
     subjectQuestionIds.has(c.questionId)
   );
 
-  console.log("Subject ID:", id);
-  console.log("Subject Question IDs (first 5):",[...subjectQuestionIds].slice(0,5));
-  console.log("All Loaded Cards (first 5 questionIds):",[...Object.keys(cards)].slice(0,5));
-  console.log("Filtered Subject Cards count:", subjectCards.length);
-  console.log("Filtered Subject Cards (first 5):",[...subjectCards].slice(0,5));
-
   const MASTERY_ORDER: MasteryLevel[] = ['Perfect', 'Great', 'Good', 'Bad', 'Miss', 'New'];
 
   const progressCounts: Partial<Record<MasteryLevel, number>> = {};
   MASTERY_ORDER.forEach(level => {
-    progressCounts[level] = subjectCards.filter(c => c.masteryLevel === level).length;
+    const count = subjectCards.filter(c => (c.masteryLevel || 'New') === level).length;
+    progressCounts[level] = count;
   });
 
   const chartConfig = {

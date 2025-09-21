@@ -3,75 +3,35 @@ import { Card } from "./types";
 
 export const loadAllCards = async (): Promise<{ [questionId: string]: Card }> => {
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    console.log("loadAllCards: No user session, returning empty cards.");
-    return {};
-  }
+  if (user) {
+    const { data, error } = await supabase
+      .from('cards')
+      .select('*')
+      .eq('user_id', user.id);
 
-  try {
-    console.log("loadAllCards: Fetching all cards for user with pagination:", user.id);
-    
-    let allCardsFromDb: any[] = [];
-    let page = 0;
-    const pageSize = 1000;
-    let hasMore = true;
-
-    while(hasMore) {
-      const from = page * pageSize;
-      const to = from + pageSize - 1;
-      
-      const { data: pageOfCards, error } = await supabase
-        .from('cards')
-        .select('*')
-        .eq('user_id', user.id)
-        .range(from, to);
-
-      if (error) {
-        console.error(`loadAllCards: Error loading cards from DB (page ${page}):`, error);
-        throw error;
-      }
-
-      if (pageOfCards && pageOfCards.length > 0) {
-        allCardsFromDb.push(...pageOfCards);
-        if (pageOfCards.length < pageSize) {
-          hasMore = false;
-        } else {
-          page++;
-        }
-      } else {
-        hasMore = false;
-      }
+    if (error) {
+      console.error('Error loading cards from Supabase:', error);
+      return {};
     }
 
-    console.log(`loadAllCards: Total cards fetched from DB: ${allCardsFromDb.length}`);
-
-    const cards: Card[] = (allCardsFromDb || []).map(dbCard => ({
-      questionId: dbCard.question_id,
-      interval: dbCard.interval,
-      repetitions: dbCard.repetitions,
-      easeFactor: dbCard.ease_factor,
-      dueDate: new Date(dbCard.due_date).getTime(),
-      lastReviewed: dbCard.last_reviewed ? new Date(dbCard.last_reviewed).getTime() : undefined,
-      consecutiveCorrectAnswers: dbCard.consecutive_correct_answers,
-      needsReview: dbCard.needs_review,
-      masteryLevel: dbCard.mastery_level,
-      correct_count: dbCard.correct_count,
-      total_count: dbCard.total_count,
-      user_id: dbCard.user_id
-    }));
-
-    const cardsMap = cards.reduce((acc, card) => {
-      acc[card.questionId] = card;
-      return acc;
-    }, {} as { [questionId: string]: Card });
-
-    console.log("loadAllCards: Mapped cards count:", Object.keys(cardsMap).length);
+    const cardsMap: { [questionId: string]: Card } = {};
+    if (data) {
+      data.forEach(dbCard => {
+        cardsMap[dbCard.question_id] = {
+          questionId: dbCard.question_id,
+          interval: dbCard.interval,
+          repetition: dbCard.repetition,
+          efactor: dbCard.efactor,
+          dueDate: dbCard.due_date,
+          masteryLevel: dbCard.mastery_level,
+          correct_count: dbCard.correct_count,
+          total_count: dbCard.total_count,
+        };
+      });
+    }
     return cardsMap;
-
-  } catch (error) {
-    console.error("loadAllCards: Error in loadAllCards catch block:", error);
-    return {};
   }
+  return {};
 };
 
 export const saveCards = async (cardsToSave: Card[]) => {
