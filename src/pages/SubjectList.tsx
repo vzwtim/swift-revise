@@ -311,7 +311,7 @@ export default function SubjectList() {
     <div className="min-h-screen gradient-learning">
       {renderHeader()}
       <main className="container mx-auto px-4 py-8">
-        {authLoading || isLoading ? (
+        {authLoading || isCardsLoading || isLoading ? (
           <p>Loading...</p> // Replace with skeleton
         ) : (
           <>

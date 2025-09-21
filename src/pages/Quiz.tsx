@@ -42,20 +42,20 @@ export default function Quiz() {
   const [isLoading, setIsLoading] = useState(true);
   const [feedback, setFeedback] = useState<{ show: boolean; correct: boolean } | null>(null);
 
+  // Sync global cards to local state when global cards are loaded/changed
   useEffect(() => {
-    if (!unitId || authLoading) return;
+    if (!isCardsLoading) {
+      setLocalCards(globalCards);
+    }
+  }, [globalCards, isCardsLoading]);
 
-    const initializeQuiz = async () => {
+  useEffect(() => {
+    // Wait for cards to be loaded and synced.
+    if (!unitId || authLoading || isCardsLoading || Object.keys(localCards).length === 0) return;
+
+    const setupQuiz = () => {
       setIsLoading(true);
-
-      const allCards = await loadAllCards();
-      const { currentCardsMap, newCardsToSave } = await initializeCards(allCards);
-      if (newCardsToSave.length > 0) {
-        await saveCards(newCardsToSave);
-      }
-      setCards(currentCardsMap);
-
-      const { questionsToShow, pageTitle, pageDescription, showNoUnitsError } = buildQuizQuestions(unitId, location.search, currentCardsMap);
+      const { questionsToShow, pageTitle, pageDescription, showNoUnitsError } = buildQuizQuestions(unitId, location.search, localCards);
       
       if (showNoUnitsError) {
         setQuestions([]);
@@ -66,8 +66,6 @@ export default function Quiz() {
       setUnit({ id: unitId, name: pageTitle, description: pageDescription, subjectId: "", questions: questionsToShow, dueCards: 0, newCards: questionsToShow.length });
       setQuestions(questionsToShow);
 
-
-
       if (questionsToShow.length > 0) {
         const lastIndex = getLastQuestionIndex(unitId);
         if (lastIndex !== null && lastIndex < questionsToShow.length - 1) {
@@ -76,12 +74,11 @@ export default function Quiz() {
           setCurrentQuestionIndex(0);
         }
       }
-
       setIsLoading(false);
     };
 
-    initializeQuiz();
-  }, [unitId, location.search, user, authLoading]);
+    setupQuiz();
+  }, [unitId, location.search, user, authLoading, isCardsLoading, localCards]);
 
 
 
@@ -248,7 +245,7 @@ export default function Quiz() {
   }
 
   const currentQuestion = questions[currentQuestionIndex];
-  const currentCard = currentQuestion ? cards[currentQuestion.id] : null;
+  const currentCard = currentQuestion ? localCards[currentQuestion.id] : null;
 
   return (
     <div className="min-h-screen gradient-learning">
@@ -327,6 +324,12 @@ export default function Quiz() {
           </>
         )}
       </main>
+    </div>
+  );
+}
+
+}
+
     </div>
   );
 }

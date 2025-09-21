@@ -1,6 +1,9 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Session, User } from '@supabase/supabase-js';
+import { Card } from '@/lib/types';
+import { loadAllCards, saveCards } from '@/lib/card-storage';
+import { initializeCards } from '@/lib/quiz-builder';
 
 // Add a Profile type
 export interface Profile {
@@ -15,24 +18,31 @@ export interface Profile {
 interface AuthContextType {
   session: Session | null;
   user: User | null;
-  profile: Profile | null; // Add profile to the context type
+  profile: Profile | null;
   loading: boolean;
+  cards: { [questionId: string]: Card };
+  isCardsLoading: boolean;
   updateStudyingCategories: (newCategories: string[]) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
-  profile: null, // Add profile to the context
+  profile: null,
   loading: true,
+  cards: {},
+  isCardsLoading: true,
   updateStudyingCategories: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null); // Add profile state
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cards, setCards] = useState<{ [questionId: string]: Card }>({});
+  const [isCardsInitialized, setIsCardsInitialized] = useState(false);
+  const [isCardsLoading, setIsCardsLoading] = useState(true);
 
   useEffect(() => {
     const fetchProfile = async (user: User) => {
@@ -76,6 +86,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
+  useEffect(() => {
+    if (user && !isCardsInitialized) {
+      const initializeUserCards = async () => {
+        setIsCardsLoading(true);
+        console.log("[AuthContext] Initializing cards for new user...");
+
+        const allCards = await loadAllCards();
+        const { currentCardsMap, newCardsToSave } = await initializeCards(allCards);
+
+        if (newCardsToSave.length > 0) {
+          console.log(`[AuthContext] Found ${newCardsToSave.length} new cards. Saving to DB...`);
+          await saveCards(newCardsToSave);
+        }
+
+        setCards(currentCardsMap);
+        setIsCardsInitialized(true);
+        setIsCardsLoading(false);
+        console.log("[AuthContext] Card initialization complete.");
+      };
+
+      initializeUserCards();
+    } else if (!user) {
+      // User logged out, reset card state
+      setCards({});
+      setIsCardsInitialized(false);
+      setIsCardsLoading(false); // Set to false as there's nothing to load
+    }
+  }, [user, isCardsInitialized]);
+
+
   const updateStudyingCategories = async (newCategories: string[]) => {
     if (!user) {
       console.error("Cannot update categories without a user.");
@@ -106,6 +146,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     user,
     profile,
     loading,
+    cards,
+    isCardsLoading,
     updateStudyingCategories,
   };
 

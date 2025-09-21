@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { UnitCard } from "@/components/unit-card";
 import { Button } from "@/components/ui/button";
 import { MasteryPieChart } from "@/components/mastery-pie-chart";
 import { subjects } from "@/data/questions";
 import { ArrowLeft } from "lucide-react";
-import { loadAllCards } from "@/lib/card-storage";
+import { useAuth } from "@/contexts/AuthContext";
 import { QuizSettingsDialog } from "@/components/quiz-settings-dialog";
 import { Card as CardType, MasteryLevel } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,9 +13,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function Subject() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { cards, isCardsLoading } = useAuth();
 
-  const [cards, setCards] = useState<{ [questionId: string]: CardType }>({});
-  const [isLoading, setIsLoading] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [quizTarget, setQuizTarget] = useState({ id: '', title: '', description: '' });
 
@@ -174,6 +173,11 @@ export default function Subject() {
         onOpenChange={setIsSettingsOpen}
         targetId={quizTarget.id}
         title={quizTarget.title}
+        description={quizTarget.description}
+      />
+    </div>
+  );
+}    title={quizTarget.title}
         description={quizTarget.description}
       />
     </div>
