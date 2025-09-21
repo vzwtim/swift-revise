@@ -12,7 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getDailyTarget, setDailyTarget } from "@/lib/answer-stats";
 import { cn, getRankStyle } from "@/lib/utils";
-import { loadAllCards } from "@/lib/card-storage";
+import { loadAllCards, saveCards } from "@/lib/card-storage";
+import { initializeCards } from "@/lib/quiz-builder";
 import { Card as CardType, MasteryLevel, Subject } from "@/lib/types"; // Import Subject
 import { QuizSettingsDialog } from "@/components/quiz-settings-dialog";
 import { BulkStudyDialog } from "@/components/bulk-study-dialog";
@@ -78,8 +79,12 @@ export default function SubjectList() {
       setCards({});
 
       if (session && user) {
-        const loadedCards = await loadAllCards();
-        setCards(loadedCards);
+        const allCards = await loadAllCards();
+        const { currentCardsMap, newCardsToSave } = await initializeCards(allCards);
+        if (newCardsToSave.length > 0) {
+          await saveCards(newCardsToSave);
+        }
+        setCards(currentCardsMap);
 
         try {
           const { data, error } = await supabase

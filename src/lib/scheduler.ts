@@ -66,6 +66,9 @@ export class SpacedRepetitionScheduler {
     if (newCard.consecutiveCorrectAnswers == null) {
       newCard.consecutiveCorrectAnswers = 0;
     }
+    if (newCard.needsReview == null) {
+      newCard.needsReview = true;
+    }
     newCard.lastReviewed = Date.now();
 
     // Update consecutive correct answers and review status
