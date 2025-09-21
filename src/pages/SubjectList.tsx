@@ -182,7 +182,7 @@ export default function SubjectList() {
       progressCounts[level] = (progressCounts[level] || 0) + 1;
     });
     
-    const completedQuestions = progressCounts.Perfect || 0;
+    const completedQuestions = progressCounts.mastered || 0;
 
     return { ...subject, progressCounts, completedQuestions };
   });

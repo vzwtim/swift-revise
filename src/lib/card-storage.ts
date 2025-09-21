@@ -6,7 +6,7 @@ export const loadAllCards = async (): Promise<{ [questionId: string]: Card }> =>
   if (user) {
     const { data, error } = await supabase
       .from('cards')
-      .select('question_id, interval, repetition, efactor, due_date, mastery_level, correct_count, total_count')
+      .select('*')
       .eq('user_id', user.id);
 
     if (error) {
@@ -18,15 +18,11 @@ export const loadAllCards = async (): Promise<{ [questionId: string]: Card }> =>
     if (data) {
       data.forEach(dbCard => {
         cardsMap[dbCard.question_id] = {
+          ...dbCard,
           questionId: dbCard.question_id,
-          interval: dbCard.interval,
-          repetition: dbCard.repetition,
-          efactor: dbCard.efactor,
-          dueDate: dbCard.due_date,
           masteryLevel: dbCard.mastery_level,
-          correct_count: dbCard.correct_count,
-          total_count: dbCard.total_count,
-        };
+          dueDate: dbCard.due_date,
+        } as Card;
       });
     }
     return cardsMap;
