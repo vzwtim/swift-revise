@@ -117,6 +117,12 @@ export default function Quiz() {
     try {
       await saveAnswerLog({ ...userAnswer, grade: grade }, currentQuestion, sessionId);
       const originalCard = cards[currentQuestion.id];
+
+      if (!originalCard) {
+        console.error(`Card not found in state for questionId: ${currentQuestion.id}`);
+        console.log('Current cards state keys:', Object.keys(cards).slice(0, 10)); // stateのキーを最初の10件だけ表示
+      }
+
       if (originalCard) {
         let updatedCard = { ...originalCard };
         updatedCard.total_count += 1;
