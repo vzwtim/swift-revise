@@ -293,7 +293,7 @@ export default function Quiz() {
                           </div>
                         </SelectItem>
                       );
-                    })}}
+                    })}
                   </SelectContent>
                 </Select>
               </div>
