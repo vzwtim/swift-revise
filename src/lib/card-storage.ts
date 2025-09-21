@@ -18,11 +18,15 @@ export const loadAllCards = async (): Promise<{ [questionId: string]: Card }> =>
     if (data) {
       data.forEach(dbCard => {
         cardsMap[dbCard.question_id] = {
-          ...dbCard,
           questionId: dbCard.question_id,
-          masteryLevel: dbCard.mastery_level,
+          interval: dbCard.interval,
+          repetition: dbCard.repetition,
+          efactor: dbCard.efactor,
           dueDate: dbCard.due_date,
-        } as Card;
+          masteryLevel: dbCard.mastery_level,
+          correct_count: dbCard.correct_count,
+          total_count: dbCard.total_count,
+        };
       });
     }
     return cardsMap;
