@@ -14,6 +14,7 @@ import {
 } from "@/lib/quiz-progress";
 import { loadAllCards, saveCards } from "@/lib/card-storage";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getStatusColor } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Select,
@@ -37,7 +38,6 @@ export default function Quiz() {
   const [sessionId] = useState(() => crypto.randomUUID());
   const [unit, setUnit] = useState<Unit | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [currentCard, setCurrentCard] = useState<Card | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [feedback, setFeedback] = useState<{ show: boolean; correct: boolean } | null>(null);
 
@@ -80,12 +80,7 @@ export default function Quiz() {
     initializeQuiz();
   }, [unitId, location.search, user, authLoading]);
 
-  useEffect(() => {
-    if (questions.length > 0 && Object.keys(cards).length > 0) {
-      const card = cards[questions[currentQuestionIndex]?.id];
-      setCurrentCard(card || null);
-    }
-  }, [currentQuestionIndex, questions, cards]);
+
 
   useEffect(() => {
     if (feedback?.show) {
@@ -240,21 +235,7 @@ export default function Quiz() {
   }
 
   const currentQuestion = questions[currentQuestionIndex];
-
-  const getStatusColor = (masteryLevel: string | undefined) => {
-    switch (masteryLevel) {
-      case 'new':
-        return 'bg-gray-400';
-      case 'learning':
-        return 'bg-blue-500';
-      case 'mastered':
-        return 'bg-green-500';
-      case 'review':
-        return 'bg-yellow-500';
-      default:
-        return 'bg-gray-200';
-    }
-  };
+  const currentCard = currentQuestion ? cards[currentQuestion.id] : null;
 
   return (
     <div className="min-h-screen gradient-learning">
@@ -284,7 +265,7 @@ export default function Quiz() {
                   </SelectTrigger>
                   <SelectContent>
                     {questions.map((question, index) => {
-                      const card = Object.values(cards).find(c => c.questionId === question.id);
+                      const card = cards[question.id];
                       return (
                         <SelectItem key={index} value={String(index)}>
                           <div className="flex items-center">
