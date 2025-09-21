@@ -21,14 +21,18 @@ export const getRankStyle = (totalAnswers: number | null | undefined) => {
 
 export const getStatusColor = (masteryLevel: string | undefined) => {
   switch (masteryLevel) {
-    case 'new':
-      return 'bg-gray-400';
-    case 'learning':
-      return 'bg-blue-500';
-    case 'mastered':
+    case 'Perfect':
       return 'bg-green-500';
-    case 'review':
-      return 'bg-yellow-500';
+    case 'Great':
+      return 'bg-blue-500';
+    case 'Good':
+      return 'bg-yellow-400';
+    case 'Bad':
+      return 'bg-orange-500';
+    case 'Miss':
+      return 'bg-red-500';
+    case 'New':
+      return 'bg-zinc-400';
     default:
       return 'bg-gray-200';
   }
