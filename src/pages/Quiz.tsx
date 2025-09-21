@@ -6,13 +6,13 @@ import { SpacedRepetitionScheduler } from "@/lib/scheduler";
 import { UserAnswer, Card, Question, Unit } from "@/lib/types";
 import { ArrowLeft, RotateCcw, Home } from "lucide-react";
 import { saveAnswerLog } from "@/lib/answer-history";
-import { initializeCards, buildQuizQuestions } from "@/lib/quiz-builder";
+import { buildQuizQuestions } from "@/lib/quiz-builder";
 import {
   getLastQuestionIndex,
   saveLastQuestionIndex,
   clearLastQuestionIndex,
 } from "@/lib/quiz-progress";
-import { loadAllCards, saveCards } from "@/lib/card-storage";
+import { saveCards } from "@/lib/card-storage";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getStatusColor } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,12 +28,12 @@ export default function Quiz() {
   const { unitId } = useParams<{ unitId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, cards: globalCards, isCardsLoading } = useAuth();
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
   const [showResult, setShowResult] = useState(false);
-  const [cards, setCards] = useState<{ [questionId: string]: Card }>({});
+  const [localCards, setLocalCards] = useState<{ [questionId: string]: Card }>({});
   const [isComplete, setIsComplete] = useState(false);
   const [sessionId] = useState(() => crypto.randomUUID());
   const [unit, setUnit] = useState<Unit | null>(null);
@@ -42,7 +42,6 @@ export default function Quiz() {
   const [isLoading, setIsLoading] = useState(true);
   const [feedback, setFeedback] = useState<{ show: boolean; correct: boolean } | null>(null);
 
-  // Sync global cards to local state when global cards are loaded/changed
   useEffect(() => {
     if (!isCardsLoading) {
       setLocalCards(globalCards);
@@ -50,8 +49,10 @@ export default function Quiz() {
   }, [globalCards, isCardsLoading]);
 
   useEffect(() => {
-    // Wait for cards to be loaded and synced.
-    if (!unitId || authLoading || isCardsLoading || Object.keys(localCards).length === 0) return;
+    if (!unitId || authLoading || isCardsLoading || Object.keys(localCards).length === 0) {
+      setIsLoading(true);
+      return;
+    }
 
     const setupQuiz = () => {
       setIsLoading(true);
@@ -80,8 +81,6 @@ export default function Quiz() {
     setupQuiz();
   }, [unitId, location.search, user, authLoading, isCardsLoading, localCards]);
 
-
-
   useEffect(() => {
     if (feedback?.show) {
       const timer = setTimeout(() => {
@@ -96,33 +95,30 @@ export default function Quiz() {
     const isCorrect = answer === currentQuestion.answer;
     setFeedback({ show: true, correct: isCorrect });
 
-    // Create the UserAnswer object first
     const userAnswer: UserAnswer = { 
       questionId: currentQuestion.id, 
       answer, 
       timeSpent, 
       isCorrect, 
-      grade: 0 // grade will be calculated next, so this is a placeholder
+      grade: 0
     };
 
-    // Calculate the grade (0, 1, or 2) using the new scheduler logic
     const grade = SpacedRepetitionScheduler.calculateGrade(userAnswer);
 
-    setAnswers((prev) => [...prev, { ...userAnswer, grade: grade }]); // Store the correct grade
+    setAnswers((prev) => [...prev, { ...userAnswer, grade: grade }]);
     setShowResult(true);
     
     try {
       await saveAnswerLog({ ...userAnswer, grade: grade }, currentQuestion, sessionId);
-      const originalCard = cards[currentQuestion.id];
+      const originalCard = localCards[currentQuestion.id];
       if (originalCard) {
         let updatedCard = { ...originalCard };
         updatedCard.total_count += 1;
         if (isCorrect) {
           updatedCard.correct_count += 1;
         }
-        // Schedule the card using the correct grade to get the updated masteryLevel
         updatedCard = SpacedRepetitionScheduler.scheduleCard(updatedCard, grade);
-        setCards((prev) => ({ ...prev, [currentQuestion.id]: updatedCard }));
+        setLocalCards((prev) => ({ ...prev, [currentQuestion.id]: updatedCard }));
         await saveCards([updatedCard]);
       }
     } catch (error) {
@@ -169,7 +165,7 @@ export default function Quiz() {
     }
   };
 
-  if (isLoading) {
+  if (authLoading || isCardsLoading || isLoading) {
     return (
       <div className="min-h-screen gradient-learning p-4 sm:p-8">
         <header className="container mx-auto"><Skeleton className="h-10 w-24" /></header>
@@ -219,8 +215,8 @@ export default function Quiz() {
               <div className="p-4 bg-muted/20 rounded-lg">
                 <div className="text-sm text-muted-foreground mb-2">次回復習予定</div>
                 <div className="text-sm font-medium">
-                  {SpacedRepetitionScheduler.getNextReviewDate(Object.values(cards)) 
-                    ? new Date(SpacedRepetitionScheduler.getNextReviewDate(Object.values(cards))!).toLocaleDateString()
+                  {SpacedRepetitionScheduler.getNextReviewDate(Object.values(localCards)) 
+                    ? new Date(SpacedRepetitionScheduler.getNextReviewDate(Object.values(localCards))!).toLocaleDateString()
                     : "なし"
                   }
                 </div>
@@ -275,7 +271,7 @@ export default function Quiz() {
                   </SelectTrigger>
                   <SelectContent>
                     {questions.map((question, index) => {
-                      const card = cards[question.id];
+                      const card = localCards[question.id];
                       const masteryLevel = card?.masteryLevel || 'new';
                       return (
                         <SelectItem key={index} value={String(index)}>
@@ -326,4 +322,4 @@ export default function Quiz() {
       </main>
     </div>
   );
-};
+}
