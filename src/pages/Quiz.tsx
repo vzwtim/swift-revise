@@ -6,14 +6,16 @@ import { SpacedRepetitionScheduler } from "@/lib/scheduler";
 import { UserAnswer, Card, Question, Unit } from "@/lib/types";
 import { ArrowLeft, RotateCcw, Home } from "lucide-react";
 import { saveAnswerLog } from "@/lib/answer-history";
-import { initializeCards, buildQuizQuestions } from "@/lib/quiz-builder";
+import { buildQuizQuestions } from "@/lib/quiz-builder";
 import {
   getLastQuestionIndex,
   saveLastQuestionIndex,
   clearLastQuestionIndex,
 } from "@/lib/quiz-progress";
-import { loadAllCards, saveCards } from "@/lib/card-storage";
+import { saveCards } from "@/lib/card-storage";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getStatusColor, getMasteryLevelName } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Select,
   SelectContent,
@@ -26,33 +28,35 @@ export default function Quiz() {
   const { unitId } = useParams<{ unitId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, loading: authLoading, cards: globalCards, isCardsLoading } = useAuth();
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
   const [showResult, setShowResult] = useState(false);
-  const [cards, setCards] = useState<{ [questionId: string]: Card }>({});
+  const [localCards, setLocalCards] = useState<{ [questionId: string]: Card }>({});
   const [isComplete, setIsComplete] = useState(false);
   const [sessionId] = useState(() => crypto.randomUUID());
   const [unit, setUnit] = useState<Unit | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [currentCard, setCurrentCard] = useState<Card | null>(null);
+
   const [isLoading, setIsLoading] = useState(true);
   const [feedback, setFeedback] = useState<{ show: boolean; correct: boolean } | null>(null);
 
   useEffect(() => {
-    if (!unitId) return;
+    if (!isCardsLoading) {
+      setLocalCards(globalCards);
+    }
+  }, [globalCards, isCardsLoading]);
 
-    const initializeQuiz = async () => {
+  useEffect(() => {
+    if (!unitId || authLoading || isCardsLoading || Object.keys(localCards).length === 0) {
       setIsLoading(true);
+      return;
+    }
 
-      const allCards = await loadAllCards();
-      const { currentCardsMap, newCardsToSave } = await initializeCards(allCards);
-      if (newCardsToSave.length > 0) {
-        await saveCards(newCardsToSave);
-      }
-      setCards(currentCardsMap);
-
-      const { questionsToShow, pageTitle, pageDescription, showNoUnitsError } = buildQuizQuestions(unitId, location.search, currentCardsMap);
+    const setupQuiz = () => {
+      setIsLoading(true);
+      const { questionsToShow, pageTitle, pageDescription, showNoUnitsError } = buildQuizQuestions(unitId, location.search, localCards);
       
       if (showNoUnitsError) {
         setQuestions([]);
@@ -71,19 +75,11 @@ export default function Quiz() {
           setCurrentQuestionIndex(0);
         }
       }
-
       setIsLoading(false);
     };
 
-    initializeQuiz();
-  }, [unitId, location.search]);
-
-  useEffect(() => {
-    if (questions.length > 0 && Object.keys(cards).length > 0) {
-      const card = cards[questions[currentQuestionIndex]?.id];
-      setCurrentCard(card || null);
-    }
-  }, [currentQuestionIndex, questions, cards]);
+    setupQuiz();
+  }, [unitId, location.search, user, authLoading, isCardsLoading, localCards]);
 
   useEffect(() => {
     if (feedback?.show) {
@@ -99,15 +95,22 @@ export default function Quiz() {
     const isCorrect = answer === currentQuestion.answer;
     setFeedback({ show: true, correct: isCorrect });
 
-    const grade = SpacedRepetitionScheduler.calculateGrade({ questionId: currentQuestion.id, answer, timeSpent, isCorrect, grade: 0 });
-    const userAnswer: UserAnswer = { questionId: currentQuestion.id, answer, timeSpent, isCorrect, grade };
+    const userAnswer: UserAnswer = { 
+      questionId: currentQuestion.id, 
+      answer, 
+      timeSpent, 
+      isCorrect, 
+      grade: 0
+    };
 
-    setAnswers((prev) => [...prev, userAnswer]);
+    const grade = SpacedRepetitionScheduler.calculateGrade(userAnswer);
+
+    setAnswers((prev) => [...prev, { ...userAnswer, grade: grade }]);
     setShowResult(true);
     
     try {
-      await saveAnswerLog(userAnswer, currentQuestion, sessionId);
-      const originalCard = cards[currentQuestion.id];
+      await saveAnswerLog({ ...userAnswer, grade: grade }, currentQuestion, sessionId);
+      const originalCard = localCards[currentQuestion.id];
       if (originalCard) {
         let updatedCard = { ...originalCard };
         updatedCard.total_count += 1;
@@ -115,7 +118,7 @@ export default function Quiz() {
           updatedCard.correct_count += 1;
         }
         updatedCard = SpacedRepetitionScheduler.scheduleCard(updatedCard, grade);
-        setCards((prev) => ({ ...prev, [currentQuestion.id]: updatedCard }));
+        setLocalCards((prev) => ({ ...prev, [currentQuestion.id]: updatedCard }));
         await saveCards([updatedCard]);
       }
     } catch (error) {
@@ -162,7 +165,7 @@ export default function Quiz() {
     }
   };
 
-  if (isLoading) {
+  if (authLoading || isCardsLoading || isLoading) {
     return (
       <div className="min-h-screen gradient-learning p-4 sm:p-8">
         <header className="container mx-auto"><Skeleton className="h-10 w-24" /></header>
@@ -212,8 +215,8 @@ export default function Quiz() {
               <div className="p-4 bg-muted/20 rounded-lg">
                 <div className="text-sm text-muted-foreground mb-2">次回復習予定</div>
                 <div className="text-sm font-medium">
-                  {SpacedRepetitionScheduler.getNextReviewDate(Object.values(cards)) 
-                    ? new Date(SpacedRepetitionScheduler.getNextReviewDate(Object.values(cards))!).toLocaleDateString()
+                  {SpacedRepetitionScheduler.getNextReviewDate(Object.values(localCards)) 
+                    ? new Date(SpacedRepetitionScheduler.getNextReviewDate(Object.values(localCards))!).toLocaleDateString()
                     : "なし"
                   }
                 </div>
@@ -238,21 +241,7 @@ export default function Quiz() {
   }
 
   const currentQuestion = questions[currentQuestionIndex];
-
-  const getStatusColor = (masteryLevel: string | undefined) => {
-    switch (masteryLevel) {
-      case 'new':
-        return 'bg-gray-400';
-      case 'learning':
-        return 'bg-blue-500';
-      case 'mastered':
-        return 'bg-green-500';
-      case 'review':
-        return 'bg-yellow-500';
-      default:
-        return 'bg-gray-200';
-    }
-  };
+  const currentCard = currentQuestion ? localCards[currentQuestion.id] : null;
 
   return (
     <div className="min-h-screen gradient-learning">
@@ -277,18 +266,25 @@ export default function Quiz() {
             {questions.length > 0 && (
               <div className="flex items-center gap-2">
                 <Select value={String(currentQuestionIndex)} onValueChange={handleQuestionSelect}>
-                  <SelectTrigger className="w-[140px]">
+                  <SelectTrigger className="w-[160px]">
                     <SelectValue placeholder="問題を選択" />
                   </SelectTrigger>
                   <SelectContent>
-                    {questions.map((question, index) => (
-                      <SelectItem key={index} value={String(index)}>
-                        <div className="flex items-center">
-                          <span className={`h-2 w-2 rounded-full mr-2 ${getStatusColor(cards[question.id]?.masteryLevel)}`}></span>
-                          <span>{index + 1} / {questions.length} 問目</span>
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {questions.map((question, index) => {
+                      const card = localCards[question.id];
+                      const masteryLevel = card?.masteryLevel || 'New';
+                      return (
+                        <SelectItem key={index} value={String(index)}>
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center">
+                              <span className={`h-2 w-2 rounded-full mr-2 ${getStatusColor(masteryLevel)}`}></span>
+                              <span>{index + 1} 問目</span>
+                            </div>
+                            <span className="text-xs text-muted-foreground">{getMasteryLevelName(masteryLevel)}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
