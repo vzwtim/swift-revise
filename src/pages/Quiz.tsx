@@ -326,10 +326,4 @@ export default function Quiz() {
       </main>
     </div>
   );
-}
-
-}
-
-    </div>
-  );
-}
+};
