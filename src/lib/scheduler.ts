@@ -18,6 +18,7 @@ export class SpacedRepetitionScheduler {
       masteryLevel: "New",
       correct_count: 0,
       total_count: 0,
+      lastReviewed: Date.now(),
     };
   }
 
