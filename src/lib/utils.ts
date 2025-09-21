@@ -18,3 +18,18 @@ export const getRankStyle = (totalAnswers: number | null | undefined) => {
   }
   return ''; // Default (no ring)
 };
+
+export const getStatusColor = (masteryLevel: string | undefined) => {
+  switch (masteryLevel) {
+    case 'new':
+      return 'bg-gray-400';
+    case 'learning':
+      return 'bg-blue-500';
+    case 'mastered':
+      return 'bg-green-500';
+    case 'review':
+      return 'bg-yellow-500';
+    default:
+      return 'bg-gray-200';
+  }
+};
