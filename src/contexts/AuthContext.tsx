@@ -93,10 +93,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log("[AuthContext] Initializing cards for new user...");
 
         const allCards = await loadAllCards();
-        console.log('[AuthContext] loadAllCards result (first 5 entries):', Object.fromEntries(Object.entries(allCards).slice(0, 5)));
-
         const { currentCardsMap, newCardsToSave } = await initializeCards(allCards);
-        console.log(`[AuthContext] newCardsToSave count: ${newCardsToSave.length}`);
 
         if (newCardsToSave.length > 0) {
           console.log(`[AuthContext] Found ${newCardsToSave.length} new cards. Saving to DB...`);
