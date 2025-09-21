@@ -14,6 +14,7 @@ import {
 } from "@/lib/quiz-progress";
 import { loadAllCards, saveCards } from "@/lib/card-storage";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Select,
   SelectContent,
@@ -26,6 +27,7 @@ export default function Quiz() {
   const { unitId } = useParams<{ unitId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, loading: authLoading } = useAuth();
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
@@ -40,7 +42,7 @@ export default function Quiz() {
   const [feedback, setFeedback] = useState<{ show: boolean; correct: boolean } | null>(null);
 
   useEffect(() => {
-    if (!unitId) return;
+    if (!unitId || authLoading) return;
 
     const initializeQuiz = async () => {
       setIsLoading(true);
@@ -76,7 +78,7 @@ export default function Quiz() {
     };
 
     initializeQuiz();
-  }, [unitId, location.search]);
+  }, [unitId, location.search, user, authLoading]);
 
   useEffect(() => {
     if (questions.length > 0 && Object.keys(cards).length > 0) {
