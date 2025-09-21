@@ -16,6 +16,26 @@ export const loadAllCards = async (): Promise<{ [questionId: string]: Card }> =>
 
     const cardsMap: { [questionId: string]: Card } = {};
     if (data) {
+      const debugCard = data.find(c => c.question_id === 'ares-101-24-1-1');
+      if (debugCard) {
+        console.log('[DEBUG] DB Record for ares-101-24-1-1:', debugCard);
+        
+        const mappedCard = {
+          questionId: debugCard.question_id,
+          interval: debugCard.interval,
+          repetitions: debugCard.repetitions,
+          easeFactor: debugCard.ease_factor,
+          dueDate: new Date(debugCard.due_date).getTime(),
+          lastReviewed: debugCard.last_reviewed ? new Date(debugCard.last_reviewed).getTime() : undefined,
+          consecutiveCorrectAnswers: debugCard.consecutive_correct_answers,
+          needsReview: debugCard.needs_review,
+          masteryLevel: debugCard.mastery_level,
+          correct_count: debugCard.correct_count,
+          total_count: debugCard.total_count,
+        };
+        console.log('[DEBUG] Mapped Card for ares-101-24-1-1:', mappedCard);
+      }
+
       data.forEach(dbCard => {
         cardsMap[dbCard.question_id] = {
           questionId: dbCard.question_id,
