@@ -7,14 +7,11 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getDailyTarget, setDailyTarget } from "@/lib/answer-stats";
 import { cn, getRankStyle } from "@/lib/utils";
-import { loadAllCards, saveCards } from "@/lib/card-storage";
-import { initializeCards } from "@/lib/quiz-builder";
-import { Card as CardType, MasteryLevel, Subject } from "@/lib/types"; // Import Subject
+import { Card as CardType, MasteryLevel, Subject } from "@/lib/types";
 import { QuizSettingsDialog } from "@/components/quiz-settings-dialog";
 import { BulkStudyDialog } from "@/components/bulk-study-dialog";
 import { useAuth } from "@/contexts/AuthContext";
@@ -43,9 +40,8 @@ const AVAILABLE_CATEGORIES = [
 
 export default function SubjectList() {
   const navigate = useNavigate();
-  const { session, user, profile, loading: authLoading, updateStudyingCategories } = useAuth();
-  const [cards, setCards] = useState<{ [questionId: string]: CardType }>({});
-  const [isLoading, setIsLoading] = useState(true);
+  const { session, user, profile, loading: authLoading, updateStudyingCategories, cards, isCardsLoading } = useAuth();
+  const [statsLoading, setStatsLoading] = useState(true);
   const [target, setTarget] = useState<number>(getDailyTarget());
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isBulkStudyOpen, setIsBulkStudyOpen] = useState(false);
@@ -54,7 +50,6 @@ export default function SubjectList() {
   const [stats, setStats] = useState<{ total_answers: number; correct_answers: number } | null>(null);
   const [localStudyingCategories, setLocalStudyingCategories] = useState<string[]>([]);
 
-  // Load local categories on mount if not logged in
   useEffect(() => {
     if (!session) {
       try {
@@ -62,7 +57,6 @@ export default function SubjectList() {
         if (localCategories) {
           setLocalStudyingCategories(JSON.parse(localCategories));
         } else {
-          // Default to all categories if nothing is in localStorage
           setLocalStudyingCategories(AVAILABLE_CATEGORIES.map(c => c.id));
         }
       } catch (error) {
@@ -73,19 +67,9 @@ export default function SubjectList() {
   }, [session]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      setStats(null);
-      setCards({});
-
+    const fetchStats = async () => {
       if (session && user) {
-        const allCards = await loadAllCards();
-        const { currentCardsMap, newCardsToSave } = await initializeCards(allCards);
-        if (newCardsToSave.length > 0) {
-          await saveCards(newCardsToSave);
-        }
-        setCards(currentCardsMap);
-
+        setStatsLoading(true);
         try {
           const { data, error } = await supabase
             .from('answer_logs')
@@ -94,6 +78,7 @@ export default function SubjectList() {
 
           if (error) {
             console.error('Error fetching answer logs:', error);
+            setStats(null);
           } else if (data) {
             const total_answers = data.length;
             const correct_answers = data.filter(log => log.is_correct).length;
@@ -101,11 +86,16 @@ export default function SubjectList() {
           }
         } catch (error) {
           console.error('Error calculating user stats:', error);
+          setStats(null);
+        } finally {
+          setStatsLoading(false);
         }
+      } else {
+        setStats(null);
+        setStatsLoading(false);
       }
-      setIsLoading(false);
     };
-    fetchData();
+    fetchStats();
   }, [session, user]);
 
   const handleLogout = async () => {
@@ -167,7 +157,7 @@ export default function SubjectList() {
 
   const filteredSubjects = subjects.filter(subject => {
     if (!activeCategories || activeCategories.length === 0) {
-      return true; // Show all if no categories are set (or on initial load)
+      return true;
     }
     return activeCategories.includes(subject.category);
   });
@@ -187,13 +177,13 @@ export default function SubjectList() {
       progressCounts[level] = (progressCounts[level] || 0) + 1;
     });
     
-    const completedQuestions = progressCounts.mastered || 0;
+    const completedQuestions = progressCounts.Perfect || 0;
 
     return { ...subject, progressCounts, completedQuestions };
   });
 
   const totalQuestions = updatedSubjects.reduce((sum, subject) => sum + subject.totalQuestions, 0);
-  const completedQuestions = updatedSubjects.reduce((sum, subject) => sum + (subject.progressCounts.Perfect || 0), 0);
+  const completedQuestions = updatedSubjects.reduce((sum, subject) => sum + subject.completedQuestions, 0);
   const overallProgress = totalQuestions > 0 ? Math.round((completedQuestions / totalQuestions) * 100) : 0;
 
   const handleTargetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -311,7 +301,7 @@ export default function SubjectList() {
     <div className="min-h-screen gradient-learning">
       {renderHeader()}
       <main className="container mx-auto px-4 py-8">
-        {authLoading || isCardsLoading || isLoading ? (
+        {authLoading || isCardsLoading || statsLoading ? (
           <p>Loading...</p> // Replace with skeleton
         ) : (
           <>
@@ -428,7 +418,7 @@ export default function SubjectList() {
       <BulkStudyDialog
         open={isBulkStudyOpen}
         onOpenChange={setIsBulkStudyOpen}
-        subjects={filteredSubjects} // Pass filtered subjects
+        subjects={filteredSubjects}
         onStartBulkStudy={handleStartReview}
       />
     </div>
