@@ -38,6 +38,7 @@ export default function Quiz() {
   const [sessionId] = useState(() => crypto.randomUUID());
   const [unit, setUnit] = useState<Unit | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [initialMasteryLevels, setInitialMasteryLevels] = useState<{ [questionId: string]: any }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [feedback, setFeedback] = useState<{ show: boolean; correct: boolean } | null>(null);
 
@@ -64,6 +65,13 @@ export default function Quiz() {
 
       setUnit({ id: unitId, name: pageTitle, description: pageDescription, subjectId: "", questions: questionsToShow, dueCards: 0, newCards: questionsToShow.length });
       setQuestions(questionsToShow);
+
+      const initialLevels: { [questionId: string]: any } = {};
+      questionsToShow.forEach(question => {
+        const card = currentCardsMap[question.id];
+        initialLevels[question.id] = card?.masteryLevel || 'new';
+      });
+      setInitialMasteryLevels(initialLevels);
 
       if (questionsToShow.length > 0) {
         const lastIndex = getLastQuestionIndex(unitId);
@@ -265,11 +273,11 @@ export default function Quiz() {
                   </SelectTrigger>
                   <SelectContent>
                     {questions.map((question, index) => {
-                      const card = cards[question.id];
+                      const masteryLevel = initialMasteryLevels[question.id];
                       return (
                         <SelectItem key={index} value={String(index)}>
                           <div className="flex items-center">
-                            <span className={`h-2 w-2 rounded-full mr-2 ${getStatusColor(card?.masteryLevel)}`}></span>
+                            <span className={`h-2 w-2 rounded-full mr-2 ${getStatusColor(masteryLevel)}`}></span>
                             <span>{index + 1} / {questions.length} 問目</span>
                           </div>
                         </SelectItem>
