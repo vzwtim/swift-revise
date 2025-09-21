@@ -53,6 +53,10 @@ export class SpacedRepetitionScheduler {
 
   static scheduleCard(card: Card, grade: 0 | 1 | 2): Card {
     const newCard = { ...card };
+    // Defensive coding: Ensure easeFactor is not null/undefined
+    if (!newCard.easeFactor) {
+      newCard.easeFactor = this.INITIAL_EASE_FACTOR;
+    }
     newCard.lastReviewed = Date.now();
 
     // Update consecutive correct answers and review status
