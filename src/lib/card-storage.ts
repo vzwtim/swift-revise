@@ -3,40 +3,44 @@ import { Card } from "./types";
 
 export const loadAllCards = async (): Promise<{ [questionId: string]: Card }> => {
   const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    const { data, error } = await supabase
-      .from('cards')
-      .select('*')
-      .eq('user_id', user.id);
+  if (!user) {
+    return {};
+  }
 
-    if (error) {
-      console.error('Error loading cards from Supabase:', error);
-      return {};
+  try {
+    let allDbCards: any[] = [];
+    let page = 0;
+    const pageSize = 1000;
+
+    while (true) {
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
+
+      const { data, error } = await supabase
+        .from('cards')
+        .select('*')
+        .eq('user_id', user.id)
+        .range(from, to);
+
+      if (error) {
+        console.error(`Error loading cards from Supabase (page ${page}):`, error);
+        throw error;
+      }
+
+      if (data) {
+        allDbCards = [...allDbCards, ...data];
+      }
+
+      if (!data || data.length < pageSize) {
+        break;
+      }
+
+      page++;
     }
 
     const cardsMap: { [questionId: string]: Card } = {};
-    if (data) {
-      const debugCard = data.find(c => c.question_id === 'ares-101-24-1-1');
-      if (debugCard) {
-        console.log('[DEBUG] DB Record for ares-101-24-1-1:', debugCard);
-        
-        const mappedCard = {
-          questionId: debugCard.question_id,
-          interval: debugCard.interval,
-          repetitions: debugCard.repetitions,
-          easeFactor: debugCard.ease_factor,
-          dueDate: new Date(debugCard.due_date).getTime(),
-          lastReviewed: debugCard.last_reviewed ? new Date(debugCard.last_reviewed).getTime() : undefined,
-          consecutiveCorrectAnswers: debugCard.consecutive_correct_answers,
-          needsReview: debugCard.needs_review,
-          masteryLevel: debugCard.mastery_level,
-          correct_count: debugCard.correct_count,
-          total_count: debugCard.total_count,
-        };
-        console.log('[DEBUG] Mapped Card for ares-101-24-1-1:', mappedCard);
-      }
-
-      data.forEach(dbCard => {
+    if (allDbCards) {
+      allDbCards.forEach(dbCard => {
         cardsMap[dbCard.question_id] = {
           questionId: dbCard.question_id,
           interval: dbCard.interval,
@@ -53,8 +57,11 @@ export const loadAllCards = async (): Promise<{ [questionId: string]: Card }> =>
       });
     }
     return cardsMap;
+
+  } catch (error) {
+    console.error('Error in loadAllCards catch block:', error);
+    return {};
   }
-  return {};
 };
 
 export const saveCards = async (cardsToSave: Card[]) => {

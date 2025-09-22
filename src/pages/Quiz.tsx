@@ -49,14 +49,16 @@ export default function Quiz() {
   }, [globalCards, isCardsLoading]);
 
   useEffect(() => {
-    if (!unitId || authLoading || isCardsLoading || Object.keys(localCards).length === 0) {
+    // Wait for global cards to be loaded before setting up the quiz
+    if (!unitId || authLoading || isCardsLoading || Object.keys(globalCards).length === 0) {
       setIsLoading(true);
       return;
     }
 
     const setupQuiz = () => {
       setIsLoading(true);
-      const { questionsToShow, pageTitle, pageDescription, showNoUnitsError } = buildQuizQuestions(unitId, location.search, localCards);
+      // Use globalCards to build the initial question list, so it doesn't change during the quiz
+      const { questionsToShow, pageTitle, pageDescription, showNoUnitsError } = buildQuizQuestions(unitId, location.search, globalCards);
       
       if (showNoUnitsError) {
         setQuestions([]);
@@ -79,7 +81,8 @@ export default function Quiz() {
     };
 
     setupQuiz();
-  }, [unitId, location.search, user, authLoading, isCardsLoading, localCards]);
+    // Depend on globalCards, not localCards, to prevent re-running on answer
+  }, [unitId, location.search, user, authLoading, isCardsLoading, globalCards]);
 
   useEffect(() => {
     if (feedback?.show) {
@@ -160,6 +163,9 @@ export default function Quiz() {
   const handleQuestionSelect = (value: string) => {
     const newIndex = parseInt(value, 10);
     if (!isNaN(newIndex)) {
+      if (unitId) {
+        clearLastQuestionIndex(unitId);
+      }
       setCurrentQuestionIndex(newIndex);
       setShowResult(false);
     }
