@@ -14,7 +14,132 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      answer_logs: {
+        Row: {
+          created_at: string
+          grade: number
+          id: string
+          is_correct: boolean
+          question_id: string
+          session_id: string
+          subject: string
+          time_spent: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          grade: number
+          id?: string
+          is_correct: boolean
+          question_id: string
+          session_id: string
+          subject: string
+          time_spent: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          grade?: number
+          id?: string
+          is_correct?: boolean
+          question_id?: string
+          session_id?: string
+          subject?: string
+          time_spent?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      cards: {
+        Row: {
+          consecutive_correct_answers: number
+          correct_count: number
+          created_at: string
+          due_date: string
+          ease_factor: number
+          id: string
+          interval: number
+          last_reviewed: string | null
+          mastery_level: string
+          needs_review: boolean
+          question_id: string
+          repetitions: number
+          total_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          consecutive_correct_answers?: number
+          correct_count?: number
+          created_at?: string
+          due_date?: string
+          ease_factor?: number
+          id?: string
+          interval?: number
+          last_reviewed?: string | null
+          mastery_level?: string
+          needs_review?: boolean
+          question_id: string
+          repetitions?: number
+          total_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          consecutive_correct_answers?: number
+          correct_count?: number
+          created_at?: string
+          due_date?: string
+          ease_factor?: number
+          id?: string
+          interval?: number
+          last_reviewed?: string | null
+          mastery_level?: string
+          needs_review?: boolean
+          question_id?: string
+          repetitions?: number
+          total_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          acquired_qualifications: string[] | null
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          department: string | null
+          id: string
+          studying_categories: string[] | null
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          acquired_qualifications?: string[] | null
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          department?: string | null
+          id: string
+          studying_categories?: string[] | null
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          acquired_qualifications?: string[] | null
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          department?: string | null
+          id?: string
+          studying_categories?: string[] | null
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
