@@ -40,6 +40,8 @@ export default function Quiz() {
   const [questions, setQuestions] = useState<Question[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [dirtyCards, setDirtyCards] = useState<Set<string>>(new Set());
   const [feedback, setFeedback] = useState<{ show: boolean; correct: boolean } | null>(null);
 
   useEffect(() => {
@@ -49,8 +51,8 @@ export default function Quiz() {
   }, [globalCards, isCardsLoading]);
 
   useEffect(() => {
-    // Wait for global cards to be loaded before setting up the quiz
-    if (!unitId || authLoading || isCardsLoading || Object.keys(globalCards).length === 0) {
+    // Wait for auth and card loading to finish before setting up the quiz
+    if (!unitId || authLoading || isCardsLoading) {
       setIsLoading(true);
       return;
     }
@@ -70,9 +72,13 @@ export default function Quiz() {
       setQuestions(questionsToShow);
 
       if (questionsToShow.length > 0) {
-        const lastIndex = getLastQuestionIndex(unitId);
-        if (lastIndex !== null && lastIndex < questionsToShow.length - 1) {
-          setCurrentQuestionIndex(lastIndex + 1);
+        if (user) {
+          const lastIndex = getLastQuestionIndex(unitId);
+          if (lastIndex !== null && lastIndex < questionsToShow.length - 1) {
+            setCurrentQuestionIndex(lastIndex + 1);
+          } else {
+            setCurrentQuestionIndex(0);
+          }
         } else {
           setCurrentQuestionIndex(0);
         }
@@ -93,6 +99,39 @@ export default function Quiz() {
     }
   }, [feedback]);
 
+  const saveDirtyCards = useCallback(async () => {
+    if (!user || dirtyCards.size === 0 || isSaving) return;
+
+    console.log('[Debug] saveDirtyCards called. Saving dirty cards...');
+    setIsSaving(true);
+    const cardsToSave = Array.from(dirtyCards)
+      .map((id) => localCards[id])
+      .filter((card): card is Card => card !== undefined);
+
+    if (cardsToSave.length > 0) {
+      console.log(`[Debug] Found ${cardsToSave.length} cards to save:`, cardsToSave);
+      try {
+        await saveCards(cardsToSave);
+        setDirtyCards(new Set());
+      } catch (error) {
+        console.error("Failed to save dirty cards:", error);
+        // Optionally, handle the error, e.g., by not clearing the dirty set
+        // so the app can retry saving later.
+      } finally {
+        setIsSaving(false);
+      }
+    } else {
+      setIsSaving(false);
+    }
+  }, [dirtyCards, localCards, isSaving]);
+
+  useEffect(() => {
+    return () => {
+      console.log('[Debug] Unmounting Quiz component. Triggering saveDirtyCards.');
+      saveDirtyCards();
+    };
+  }, [saveDirtyCards]);
+
   const handleAnswer = async (answer: number, timeSpent: number) => {
     const currentQuestion = questions[currentQuestionIndex];
     const isCorrect = answer === currentQuestion.answer;
@@ -110,33 +149,38 @@ export default function Quiz() {
 
     setAnswers((prev) => [...prev, { ...userAnswer, grade: grade }]);
     setShowResult(true);
-    
-    try {
-      await saveAnswerLog({ ...userAnswer, grade: grade }, currentQuestion, sessionId);
-      const originalCard = localCards[currentQuestion.id];
-      if (originalCard) {
-        let updatedCard = { ...originalCard };
-        updatedCard.total_count += 1;
-        if (isCorrect) {
-          updatedCard.correct_count += 1;
+
+    if (user) {
+      try {
+        await saveAnswerLog({ ...userAnswer, grade: grade }, currentQuestion, sessionId);
+        const originalCard = localCards[currentQuestion.id];
+        if (originalCard) {
+          let updatedCard = { ...originalCard };
+          updatedCard.total_count += 1;
+          if (isCorrect) {
+            updatedCard.correct_count += 1;
+          }
+          updatedCard = SpacedRepetitionScheduler.scheduleCard(updatedCard, grade);
+          setLocalCards((prev) => ({ ...prev, [currentQuestion.id]: updatedCard }));
+          console.log(`[Debug] Marking card ${currentQuestion.id} as dirty.`);
+          setDirtyCards((prev) => new Set(prev).add(currentQuestion.id));
         }
-        updatedCard = SpacedRepetitionScheduler.scheduleCard(updatedCard, grade);
-        setLocalCards((prev) => ({ ...prev, [currentQuestion.id]: updatedCard }));
-        await saveCards([updatedCard]);
+      } catch (error) {
+        console.error("Failed to save progress:", error);
       }
-    } catch (error) {
-      console.error("Failed to save progress:", error);
     }
   };
 
   const handleNext = () => {
-    if (unitId) {
+    if (user && unitId) {
       saveLastQuestionIndex(unitId, currentQuestionIndex);
     }
     const nextIndex = currentQuestionIndex + 1;
     if (nextIndex >= questions.length) {
+      console.log('[Debug] Quiz complete. Triggering saveDirtyCards.');
+      saveDirtyCards();
       setIsComplete(true);
-      if (unitId) clearLastQuestionIndex(unitId);
+      if (user && unitId) clearLastQuestionIndex(unitId);
     } else {
       setCurrentQuestionIndex(nextIndex);
       setShowResult(false);
@@ -144,7 +188,7 @@ export default function Quiz() {
   };
 
   const handleRestart = () => {
-    if (unitId) clearLastQuestionIndex(unitId);
+    if (user && unitId) clearLastQuestionIndex(unitId);
     setCurrentQuestionIndex(0);
     setAnswers([]);
     setShowResult(false);
@@ -152,7 +196,9 @@ export default function Quiz() {
   };
 
   const handleFinish = () => {
-    if (unitId) clearLastQuestionIndex(unitId);
+    console.log('[Debug] Finishing quiz manually. Triggering saveDirtyCards.');
+    saveDirtyCards();
+    if (user && unitId) clearLastQuestionIndex(unitId);
     const score = answers.length > 0 ? Math.round((answers.filter((a) => a.isCorrect).length / answers.length) * 100) : 0;
     navigate(
       `/result?score=${score}&total=${questions.length}&correct=${answers.filter((a) => a.isCorrect).length}`,
@@ -163,7 +209,7 @@ export default function Quiz() {
   const handleQuestionSelect = (value: string) => {
     const newIndex = parseInt(value, 10);
     if (!isNaN(newIndex)) {
-      if (unitId) {
+      if (user && unitId) {
         clearLastQuestionIndex(unitId);
       }
       setCurrentQuestionIndex(newIndex);
