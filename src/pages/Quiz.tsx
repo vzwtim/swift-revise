@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { QuizCard } from "@/components/quiz-card";
 import { Button } from "@/components/ui/button";
