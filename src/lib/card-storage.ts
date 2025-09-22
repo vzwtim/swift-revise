@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { Tables } from "@/integrations/supabase/types";
 import { Card } from "./types";
 
 export const loadAllCards = async (): Promise<{ [questionId: string]: Card }> => {
@@ -8,7 +9,7 @@ export const loadAllCards = async (): Promise<{ [questionId: string]: Card }> =>
   }
 
   try {
-    let allDbCards: any[] = [];
+    let allDbCards: Tables<'cards'>[] = [];
     let page = 0;
     const pageSize = 1000;
 

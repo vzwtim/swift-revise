@@ -23,6 +23,7 @@ interface AuthContextType {
   cards: { [questionId: string]: Card };
   isCardsLoading: boolean;
   updateStudyingCategories: (newCategories: string[]) => Promise<void>;
+  updateCards: (updatedCards: Card[]) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -33,6 +34,7 @@ const AuthContext = createContext<AuthContextType>({
   cards: {},
   isCardsLoading: true,
   updateStudyingCategories: async () => {},
+  updateCards: () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -141,6 +143,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const updateCards = (updatedCards: Card[]) => {
+    if (updatedCards.length === 0) return;
+    const updatedCardsMap = updatedCards.reduce((acc, card) => {
+      acc[card.questionId] = card;
+      return acc;
+    }, {} as { [questionId: string]: Card });
+
+    setCards(prevCards => ({
+      ...prevCards,
+      ...updatedCardsMap,
+    }));
+  };
+
   const value = {
     session,
     user,
@@ -149,6 +164,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     cards,
     isCardsLoading,
     updateStudyingCategories,
+    updateCards,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

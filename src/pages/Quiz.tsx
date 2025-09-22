@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { QuizCard } from "@/components/quiz-card";
 import { Button } from "@/components/ui/button";
 import { SpacedRepetitionScheduler } from "@/lib/scheduler";
 import { UserAnswer, Card, Question, Unit } from "@/lib/types";
-import { ArrowLeft, RotateCcw, Home } from "lucide-react";
+import { ArrowLeft, RotateCcw, Home, Loader2 } from "lucide-react";
 import { saveAnswerLog } from "@/lib/answer-history";
 import { buildQuizQuestions } from "@/lib/quiz-builder";
 import {
@@ -28,7 +28,7 @@ export default function Quiz() {
   const { unitId } = useParams<{ unitId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading: authLoading, cards: globalCards, isCardsLoading } = useAuth();
+  const { user, loading: authLoading, cards: globalCards, isCardsLoading, updateCards } = useAuth();
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
@@ -43,6 +43,50 @@ export default function Quiz() {
   const [isSaving, setIsSaving] = useState(false);
   const [dirtyCards, setDirtyCards] = useState<Set<string>>(new Set());
   const [feedback, setFeedback] = useState<{ show: boolean; correct: boolean } | null>(null);
+
+  // Ref to hold the latest state and functions for cleanup effect
+  const latestStateRef = useRef({
+    user,
+    dirtyCards,
+    localCards,
+    isSaving,
+    updateCards,
+    saveCards,
+  });
+  useEffect(() => {
+    latestStateRef.current = {
+      user,
+      dirtyCards,
+      localCards,
+      isSaving,
+      updateCards,
+      saveCards,
+    };
+  }); // No dependency array, runs on every render
+
+  useEffect(() => {
+    // This effect runs only on mount and unmount
+    return () => {
+      // On unmount, save any dirty cards
+      const { user, dirtyCards, localCards, isSaving, updateCards, saveCards } = latestStateRef.current;
+
+      if (!user || dirtyCards.size === 0 || isSaving) return;
+
+      const cardsToSave = Array.from(dirtyCards)
+        .map((id) => localCards[id])
+        .filter((card): card is Card => card !== undefined);
+
+      if (cardsToSave.length > 0) {
+        saveCards(cardsToSave)
+          .then(() => {
+            updateCards(cardsToSave);
+          })
+          .catch(error => {
+            console.error("Failed to save dirty cards on unmount:", error);
+          });
+      }
+    };
+  }, []); // Empty dependency array ensures this runs only on unmount
 
   useEffect(() => {
     if (!isCardsLoading) {
@@ -99,38 +143,28 @@ export default function Quiz() {
     }
   }, [feedback]);
 
-  const saveDirtyCards = useCallback(async () => {
+  const saveDirtyCards = async () => {
     if (!user || dirtyCards.size === 0 || isSaving) return;
 
-    console.log('[Debug] saveDirtyCards called. Saving dirty cards...');
     setIsSaving(true);
     const cardsToSave = Array.from(dirtyCards)
       .map((id) => localCards[id])
       .filter((card): card is Card => card !== undefined);
 
     if (cardsToSave.length > 0) {
-      console.log(`[Debug] Found ${cardsToSave.length} cards to save:`, cardsToSave);
       try {
         await saveCards(cardsToSave);
+        updateCards(cardsToSave); // Update global state
         setDirtyCards(new Set());
       } catch (error) {
         console.error("Failed to save dirty cards:", error);
-        // Optionally, handle the error, e.g., by not clearing the dirty set
-        // so the app can retry saving later.
       } finally {
         setIsSaving(false);
       }
     } else {
       setIsSaving(false);
     }
-  }, [dirtyCards, localCards, isSaving]);
-
-  useEffect(() => {
-    return () => {
-      console.log('[Debug] Unmounting Quiz component. Triggering saveDirtyCards.');
-      saveDirtyCards();
-    };
-  }, [saveDirtyCards]);
+  };
 
   const handleAnswer = async (answer: number, timeSpent: number) => {
     const currentQuestion = questions[currentQuestionIndex];
@@ -162,7 +196,6 @@ export default function Quiz() {
           }
           updatedCard = SpacedRepetitionScheduler.scheduleCard(updatedCard, grade);
           setLocalCards((prev) => ({ ...prev, [currentQuestion.id]: updatedCard }));
-          console.log(`[Debug] Marking card ${currentQuestion.id} as dirty.`);
           setDirtyCards((prev) => new Set(prev).add(currentQuestion.id));
         }
       } catch (error) {
@@ -171,14 +204,13 @@ export default function Quiz() {
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (user && unitId) {
       saveLastQuestionIndex(unitId, currentQuestionIndex);
     }
     const nextIndex = currentQuestionIndex + 1;
     if (nextIndex >= questions.length) {
-      console.log('[Debug] Quiz complete. Triggering saveDirtyCards.');
-      saveDirtyCards();
+      await saveDirtyCards();
       setIsComplete(true);
       if (user && unitId) clearLastQuestionIndex(unitId);
     } else {
@@ -196,7 +228,6 @@ export default function Quiz() {
   };
 
   const handleFinish = () => {
-    console.log('[Debug] Finishing quiz manually. Triggering saveDirtyCards.');
     saveDirtyCards();
     if (user && unitId) clearLastQuestionIndex(unitId);
     const score = answers.length > 0 ? Math.round((answers.filter((a) => a.isCorrect).length / answers.length) * 100) : 0;
@@ -276,7 +307,10 @@ export default function Quiz() {
             </div>
 
             <div className="space-y-3">
-              <Button onClick={handleFinish} className="w-full gradient-primary">結果を詳しく見る</Button>
+              <Button onClick={handleFinish} className="w-full gradient-primary" disabled={isSaving}>
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                結果を詳しく見る
+              </Button>
               <Button onClick={handleRestart} variant="outline" className="w-full gap-2">
                 <RotateCcw className="h-4 w-4" />
                 もう一度挑戦
@@ -363,12 +397,14 @@ export default function Quiz() {
         {showResult && (
           <>
             <div className="text-center mt-8 hidden sm:block">
-              <Button onClick={handleNext} size="lg" className="gradient-primary">
+              <Button onClick={handleNext} size="lg" className="gradient-primary" disabled={isSaving}>
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {currentQuestionIndex + 1 >= questions.length ? "完了" : "次の問題"}
               </Button>
             </div>
             <div className="sm:hidden fixed bottom-4 left-0 right-0 px-4">
-              <Button onClick={handleNext} size="lg" className="w-full gradient-primary">
+              <Button onClick={handleNext} size="lg" className="w-full gradient-primary" disabled={isSaving}>
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {currentQuestionIndex + 1 >= questions.length ? "完了" : "次の問題"}
               </Button>
             </div>
