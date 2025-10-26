@@ -72,17 +72,17 @@ export default function SubjectList() {
         setStatsLoading(true);
         try {
           const { data, error } = await supabase
-            .from('answer_logs')
-            .select('is_correct')
-            .eq('user_id', user.id);
+            .rpc('get_my_stats')
+            .single();
 
           if (error) {
-            console.error('Error fetching answer logs:', error);
+            console.error('Error fetching user stats:', error);
             setStats(null);
           } else if (data) {
-            const total_answers = data.length;
-            const correct_answers = data.filter(log => log.is_correct).length;
-            setStats({ total_answers, correct_answers });
+            setStats({ 
+              total_answers: data.total_answers,
+              correct_answers: data.correct_answers
+            });
           }
         } catch (error) {
           console.error('Error calculating user stats:', error);

@@ -92,20 +92,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (user && !isCardsInitialized) {
       const initializeUserCards = async () => {
         setIsCardsLoading(true);
-        console.log("[AuthContext] Initializing cards for new user...");
-
-        const allCards = await loadAllCards();
-        const { currentCardsMap, newCardsToSave } = await initializeCards(allCards);
-
-        if (newCardsToSave.length > 0) {
-          console.log(`[AuthContext] Found ${newCardsToSave.length} new cards. Saving to DB...`);
-          await saveCards(newCardsToSave);
+        try {
+          // 1. DBからカード情報を読み込む
+          const allCards = await loadAllCards();
+      
+          // 2. 全問題リストと突き合わせ、不足分(新規)をチェック
+          const { currentCardsMap, newCardsToSave } = await initializeCards(allCards);
+      
+          // 3. 新規カードがあればDBに保存
+          if (newCardsToSave.length > 0) {
+            await saveCards(newCardsToSave);
+          }
+      
+          // 4. 最終的なカード情報でstateを更新
+          setCards(currentCardsMap);
+      
+        } catch (error) {
+          // ★★★重要★★★
+          // 途中でエラーが起きた場合、コンソールにエラーを出力するのみで、
+          // stateの更新やDBへの保存は一切行わない。
+          // これにより、中途半端なデータで進捗が上書きされるのを防ぐ。
+          console.error("Error during card initialization. Aborting to prevent data loss.", error);
+        } finally {
+          // 成功・失敗にかかわらず、ローディング状態は必ず解除する
+          setIsCardsInitialized(true);
+          setIsCardsLoading(false);
         }
-
-        setCards(currentCardsMap);
-        setIsCardsInitialized(true);
-        setIsCardsLoading(false);
-        console.log("[AuthContext] Card initialization complete.");
       };
 
       initializeUserCards();
