@@ -1,4 +1,4 @@
-project_id = "sbiwjjdvnoicsizipgek"
+project_id = "sjzkmnmcqrktaknbdmgq"
 
 [auth]
 additional_redirect_urls = ["http://localhost:5173", "http://localhost:5173/**"]
