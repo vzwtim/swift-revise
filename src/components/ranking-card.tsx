@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Trophy, CalendarCheck } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { useEffect, useRef, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Trophy, CalendarCheck } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserProfileCard } from './user-profile-card';
+import { UserProfileCard } from "./user-profile-card";
 
 // データはフラット化されているので、ネストした profiles は不要
 interface RankedUser {
@@ -30,30 +30,29 @@ export function RankingCard() {
   const [ranking, setRanking] = useState<RankedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('dailyChallenge');
+  const [activeTab, setActiveTab] = useState("dailyChallenge");
   const [showAll, setShowAll] = useState(false);
+  const cacheRef = useRef<Record<string, { data: RankedUser[]; ts: number }>>({});
+  const CACHE_TTL = 5 * 60 * 1000;
 
   useEffect(() => {
     const fetchRanking = async () => {
+      const cached = cacheRef.current[activeTab];
+      if (cached && Date.now() - cached.ts < CACHE_TTL) {
+        setRanking(cached.data);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError(null);
 
-      let functionName = '';
-      switch (activeTab) {
-        case 'dailyChallenge':
-          functionName = 'get-daily-challenge-ranking';
-          break;
-        case 'dailyStudy':
-          functionName = 'get-daily-study-ranking';
-          break;
-        case 'weeklyStudy':
-          functionName = 'get-weekly-study-ranking';
-          break;
-        default:
-          setLoading(false);
-          return;
-      }
-
+      const tabToFunction: Record<string, string> = {
+        dailyChallenge: "get-daily-challenge-ranking",
+        dailyStudy: "get-daily-study-ranking",
+        weeklyStudy: "get-weekly-study-ranking",
+      };
+      const functionName = tabToFunction[activeTab];
       if (!functionName) {
         setRanking([]);
         setLoading(false);
@@ -64,9 +63,11 @@ export function RankingCard() {
 
       if (error) {
         setError(error.message);
-        console.error('Error fetching ranking:', error);
+        console.error("Error fetching ranking:", error);
       } else {
-        setRanking(data || []);
+        const result = data || [];
+        cacheRef.current[activeTab] = { data: result, ts: Date.now() };
+        setRanking(result);
       }
       setLoading(false);
     };
@@ -92,24 +93,32 @@ export function RankingCard() {
     }
 
     if (error) {
-      return <p className="text-sm text-destructive">ランキングの読み込みに失敗しました。</p>;
+      return (
+        <p className="text-sm text-destructive">
+          ランキングの読み込みに失敗しました。
+        </p>
+      );
     }
 
     if (ranking.length === 0) {
-      return <p className="text-sm text-muted-foreground">ランキングはまだありません。</p>;
+      return (
+        <p className="text-sm text-muted-foreground">
+          ランキングはまだありません。
+        </p>
+      );
     }
 
     const getScoreLabel = (user: RankedUser) => {
       switch (activeTab) {
-        case 'dailyChallenge':
+        case "dailyChallenge":
           return `${user.score}点 / ${user.time_taken}秒`;
-        case 'dailyStudy':
-        case 'weeklyStudy':
+        case "dailyStudy":
+        case "weeklyStudy":
           return `${user.count}問`;
         default:
-          return '';
+          return "";
       }
-    }
+    };
 
     const displayedRanking = showAll ? ranking : ranking.slice(0, 3);
 
@@ -119,14 +128,16 @@ export function RankingCard() {
           {displayedRanking.map((user, index) => {
             // 順位に応じてリングのスタイルを決定
             const rankRingClass = [
-              'ring-yellow-400', // 1位: 金
-              'ring-slate-400', // 2位: 銀
-              'ring-orange-800'  // 3位: 銅
+              "ring-yellow-400", // 1位: 金
+              "ring-slate-400", // 2位: 銀
+              "ring-orange-800", // 3位: 銅
             ][index];
 
             return (
               <li key={user.userId} className="flex items-center gap-4">
-                <div className="font-bold text-lg w-6 text-center">{index + 1}</div>
+                <div className="font-bold text-lg w-6 text-center">
+                  {index + 1}
+                </div>
                 <UserProfileCard
                   profile={{
                     username: user.username,
@@ -139,14 +150,23 @@ export function RankingCard() {
                   total_answers={user.total_answers}
                   correct_answers={user.correct_answers}
                 >
-                  <Avatar className={`h-10 w-10 cursor-pointer ${rankRingClass ? `ring-2 ring-offset-2 ring-offset-background ${rankRingClass}` : ''}`}>
-                    <AvatarImage src={user.avatar_url || undefined} alt={user.username || ''} />
-                    <AvatarFallback>{user.username?.charAt(0) || '?'}</AvatarFallback>
+                  <Avatar
+                    className={`h-10 w-10 cursor-pointer ${rankRingClass ? `ring-2 ring-offset-2 ring-offset-background ${rankRingClass}` : ""}`}
+                  >
+                    <AvatarImage
+                      src={user.avatar_url || undefined}
+                      alt={user.username || ""}
+                    />
+                    <AvatarFallback>
+                      {user.username?.charAt(0) || "?"}
+                    </AvatarFallback>
                   </Avatar>
                 </UserProfileCard>
                 <div className="flex-1">
-                  <p className="font-medium">{user.username || '名無しさん'}</p>
-                  <p className="text-sm text-muted-foreground">{getScoreLabel(user)}</p>
+                  <p className="font-medium">{user.username || "名無しさん"}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {getScoreLabel(user)}
+                  </p>
                 </div>
               </li>
             );
@@ -154,8 +174,12 @@ export function RankingCard() {
         </ol>
         {ranking.length > 3 && (
           <div className="mt-4 text-center">
-            <Button variant="ghost" size="sm" onClick={() => setShowAll(prev => !prev)}>
-              {showAll ? '閉じる' : 'もっと見る'}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAll((prev) => !prev)}
+            >
+              {showAll ? "閉じる" : "もっと見る"}
             </Button>
           </div>
         )}
@@ -171,7 +195,12 @@ export function RankingCard() {
             <Trophy className="h-5 w-5 text-yellow-500" />
             ランキング
           </CardTitle>
-          <Button onClick={() => navigate('/daily-challenge')} size="sm" variant="outline" className="gap-2">
+          <Button
+            onClick={() => navigate("/daily-challenge")}
+            size="sm"
+            variant="outline"
+            className="gap-2"
+          >
             <CalendarCheck className="h-4 w-4" />
             今日の10問に挑戦
           </Button>
