@@ -1,5 +1,6 @@
 import { Question, Subject } from '@/lib/types';
 import aresCsv from './ARES.csv?raw';
+import ares2025Csv from './ARES_2025.csv?raw';
 import takkenCsv from './takken.csv?raw';
 
 // ARES用の科目マップ
@@ -66,7 +67,10 @@ const parseCsv = (
 };
 
 // 各カテゴリの問題をパース
-export const aresQuestions = parseCsv(aresCsv, ARES_SUBJECT_MAP, 'ares');
+export const aresQuestions = [
+  ...parseCsv(ares2025Csv, ARES_SUBJECT_MAP, 'ares'),
+  ...parseCsv(aresCsv, ARES_SUBJECT_MAP, 'ares'),
+];
 export const takkenQuestions = parseCsv(takkenCsv, TAKKEN_SUBJECT_MAP, 'takken');
 
 console.log("aresQuestions count:", aresQuestions.length);
@@ -118,4 +122,3 @@ console.log("takkenSubjects count:", takkenSubjects.length);
 export const subjects = [...aresSubjects, ...takkenSubjects];
 
 console.log("Total subjects count:", subjects.length);
-
