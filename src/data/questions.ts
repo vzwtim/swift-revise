@@ -27,6 +27,13 @@ const parseCsv = (
   subjectMap: Record<string, string>,
   idPrefix: string
 ): Question[] => {
+  const decodeCsvField = (value: string): string => {
+    if (value.startsWith('"') && value.endsWith('"')) {
+      return value.slice(1, -1).replace(/""/g, '"');
+    }
+    return value;
+  };
+
   const lines = csv.trim().split(/\r?\n/);
   const rows: string[] = [];
   let buffer: string[] = [];
@@ -48,7 +55,9 @@ const parseCsv = (
     .map((row) => {
       const match = row.match(/^([^,]+),([^,]+),(.*),(TRUE|FALSE),(.*)$/);
       if (!match) return null;
-      const [, problemNo, subId, stem, correct, explanation] = match;
+      const [, problemNo, subId, rawStem, correct, rawExplanation] = match;
+      const stem = decodeCsvField(rawStem);
+      const explanation = decodeCsvField(rawExplanation);
       const [subjectCode] = problemNo.split('-');
       const subjectName = subjectMap[subjectCode];
       if (!subjectName) return null;
