@@ -1,7 +1,7 @@
 import { SubjectCard } from "@/components/subject-card";
 import { RankingCard } from "@/components/ranking-card";
 import { subjects } from "@/data/questions";
-import { GraduationCap, BarChart3, RefreshCw, BookOpen, LogIn, LogOut, User, CalendarCheck, MessageSquare, Check, Filter } from "lucide-react";
+import { GraduationCap, BarChart3, RefreshCw, BookOpen, LogIn, LogOut, User, CalendarCheck, MessageSquare, Check, Filter, Crown } from "lucide-react";
 import { DailyProgressChart } from "@/components/daily-progress-chart";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -278,6 +278,10 @@ export default function SubjectList() {
                   <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
                     <span>プロフィール編集</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/billing')} className="cursor-pointer">
+                    <Crown className="mr-2 h-4 w-4" />
+                    <span>プラン・お支払い</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive">
                     <LogOut className="mr-2 h-4 w-4" />

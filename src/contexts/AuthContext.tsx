@@ -24,6 +24,7 @@ interface AuthContextType {
   isCardsLoading: boolean;
   updateStudyingCategories: (newCategories: string[]) => Promise<void>;
   updateCards: (updatedCards: Card[]) => void;
+  refreshUserProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -35,6 +36,7 @@ const AuthContext = createContext<AuthContextType>({
   isCardsLoading: true,
   updateStudyingCategories: async () => {},
   updateCards: () => {},
+  refreshUserProfile: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -46,21 +48,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isCardsInitialized, setIsCardsInitialized] = useState(false);
   const [isCardsLoading, setIsCardsLoading] = useState(true);
 
+  const fetchProfile = async (currentUser: User) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', currentUser.id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching profile:', error);
+    } else {
+      setProfile(data);
+    }
+  };
+
   useEffect(() => {
-    const fetchProfile = async (user: User) => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (error) {
-        console.error('Error fetching profile:', error);
-      } else {
-        setProfile(data);
-      }
-    };
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       const currentUser = session?.user ?? null;
@@ -168,6 +170,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  const refreshUserProfile = async () => {
+    if (user) await fetchProfile(user);
+  };
+
   const value = {
     session,
     user,
@@ -177,6 +183,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isCardsLoading,
     updateStudyingCategories,
     updateCards,
+    refreshUserProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

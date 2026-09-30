@@ -17,6 +17,7 @@ import DailyChallenge from "./pages/DailyChallenge";
 import { ForumPage } from "./pages/ForumPage";
 import { NewPostPage } from "./pages/NewPostPage";
 import { PostDetailPage } from "./pages/PostDetailPage";
+import Billing from "./pages/Billing";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
 
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/quiz/:unitId" element={<Quiz />} />
             <Route path="/daily-challenge" element={<DailyChallenge />} />
             <Route path="/result" element={<Result />} />
+            <Route path="/billing" element={<Billing />} />
             <Route path="/forum" element={<ForumPage />} />
             <Route path="/posts/:postId" element={<PostDetailPage />} />
 
@@ -54,4 +56,3 @@ const App = () => (
 );
 
 export default App;
-
