@@ -4,7 +4,7 @@ import { QuizCard } from "@/components/quiz-card";
 import { Button } from "@/components/ui/button";
 import { SpacedRepetitionScheduler } from "@/lib/scheduler";
 import { UserAnswer, Card, Question, Unit } from "@/lib/types";
-import { ArrowLeft, RotateCcw, Home, Loader2 } from "lucide-react";
+import { ArrowLeft, RotateCcw, Home, Loader2, Crown, LockKeyhole } from "lucide-react";
 import { saveAnswerLog } from "@/lib/answer-history";
 import { buildQuizQuestions } from "@/lib/quiz-builder";
 import {
@@ -16,6 +16,9 @@ import { saveCards } from "@/lib/card-storage";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getStatusColor, getMasteryLevelName } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/hooks/use-subscription";
+import { FREE_QUESTIONS_PER_SUBJECT, limitQuestionsForFreePlan } from "@/lib/access";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -29,6 +32,7 @@ export default function Quiz() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading: authLoading, cards: globalCards, isCardsLoading, updateCards } = useAuth();
+  const { isPremium, loading: subscriptionLoading } = useSubscription();
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
@@ -38,6 +42,8 @@ export default function Quiz() {
   const [sessionId] = useState(() => crypto.randomUUID());
   const [unit, setUnit] = useState<Unit | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [fullQuestionCount, setFullQuestionCount] = useState(0);
+  const [isFreeLimitApplied, setIsFreeLimitApplied] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -96,7 +102,7 @@ export default function Quiz() {
 
   useEffect(() => {
     // Wait for auth and card loading to finish before setting up the quiz
-    if (!unitId || authLoading || isCardsLoading) {
+    if (!unitId || authLoading || isCardsLoading || subscriptionLoading) {
       setIsLoading(true);
       return;
     }
@@ -104,7 +110,7 @@ export default function Quiz() {
     const setupQuiz = () => {
       setIsLoading(true);
       // Use globalCards to build the initial question list, so it doesn't change during the quiz
-      const { questionsToShow, pageTitle, pageDescription, showNoUnitsError } = buildQuizQuestions(unitId, location.search, globalCards);
+      const { questionsToShow: allMatchingQuestions, pageTitle, pageDescription, showNoUnitsError } = buildQuizQuestions(unitId, location.search, globalCards);
       
       if (showNoUnitsError) {
         setQuestions([]);
@@ -112,6 +118,9 @@ export default function Quiz() {
         return;
       }
 
+      const questionsToShow = isPremium ? allMatchingQuestions : limitQuestionsForFreePlan(allMatchingQuestions);
+      setFullQuestionCount(allMatchingQuestions.length);
+      setIsFreeLimitApplied(questionsToShow.length < allMatchingQuestions.length);
       setUnit({ id: unitId, name: pageTitle, description: pageDescription, subjectId: "", questions: questionsToShow, dueCards: 0, newCards: questionsToShow.length });
       setQuestions(questionsToShow);
 
@@ -132,7 +141,7 @@ export default function Quiz() {
 
     setupQuiz();
     // Depend on globalCards, not localCards, to prevent re-running on answer
-  }, [unitId, location.search, user, authLoading, isCardsLoading, globalCards]);
+  }, [unitId, location.search, user, authLoading, isCardsLoading, globalCards, isPremium, subscriptionLoading]);
 
   useEffect(() => {
     if (feedback?.show) {
@@ -248,7 +257,7 @@ export default function Quiz() {
     }
   };
 
-  if (authLoading || isCardsLoading || isLoading) {
+  if (authLoading || isCardsLoading || subscriptionLoading || isLoading) {
     return (
       <div className="min-h-screen gradient-learning p-4 sm:p-8">
         <header className="container mx-auto"><Skeleton className="h-10 w-24" /></header>
@@ -315,6 +324,12 @@ export default function Quiz() {
                 <RotateCcw className="h-4 w-4" />
                 もう一度挑戦
               </Button>
+              {isFreeLimitApplied && (
+                <Button onClick={() => navigate('/billing')} className="w-full gap-2">
+                  <Crown className="h-4 w-4" />
+                  残り{Math.max(fullQuestionCount - questions.length, 0)}問を解放
+                </Button>
+              )}
               <Button onClick={() => navigate('/')} variant="secondary" className="w-full gap-2">
                 <Home className="h-4 w-4" />
                 ホームに戻る
@@ -349,6 +364,11 @@ export default function Quiz() {
               <h1 className="text-lg font-semibold">{unit?.name}</h1>
               <p className="text-sm text-muted-foreground">{unit?.description}</p>
             </div>
+            {!isPremium && (
+              <Badge variant="outline" className="hidden sm:flex gap-1 whitespace-nowrap">
+                <LockKeyhole className="h-3 w-3" />無料 各科目{FREE_QUESTIONS_PER_SUBJECT}問
+              </Badge>
+            )}
             {questions.length > 0 && (
               <div className="flex items-center gap-2">
                 <Select value={String(currentQuestionIndex)} onValueChange={handleQuestionSelect}>
